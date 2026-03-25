@@ -1,0 +1,67 @@
+name: test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v6
+  test:
+    runs-on: ubuntu-22.04
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        gemfile:
+          - gemfiles/rails_72.gemfile
+          - gemfiles/rails_80.gemfile
+          - gemfiles/rails_81.gemfile
+          - gemfiles/rails_edge.gemfile
+
+        ruby:
+          - '3.1'
+          - '3.2'
+          - '3.3'
+          - '3.4'
+          - '4.0'
+
+        exclude:
+          - gemfile: gemfiles/rails_80.gemfile
+            ruby: '3.1'
+          - gemfile: gemfiles/rails_81.gemfile
+            ruby: '3.1'
+          - gemfile: gemfiles/rails_edge.gemfile
+            ruby: '3.1'
+          - gemfile: gemfiles/rails_edge.gemfile
+            ruby: '3.2'
+          - gemfile: gemfiles/rails_72.gemfile
+            ruby: '4.0'
+
+    env:
+      BUNDLE_GEMFILE: ${{ matrix.gemfile }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 11
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+          bundler: latest
+
+      - name: Run tests
+        run: |
+          bundle exec rake spec
+        continue-on-error: ${{ matrix.gemfile == 'gemfiles/rails_edge.gemfile' }}

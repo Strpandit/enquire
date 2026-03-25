@@ -1,0 +1,77 @@
+$toggle-width: 40px !default;
+$toggle-height: 20px !default;
+$toggle-offset: 3px !default;
+
+$toggle-outer-default: #ddd !default;
+$toggle-outer-active: $link-primary-color !default;
+$toggle-inner-default: #fff !default;
+$toggle-inner-active: #fff !default;
+
+$toggle-transition: 200ms ease-out !default;
+
+.toggle-bool-switches-container {
+  display: flex;
+  text-align: left;
+
+  span {
+    line-height: 0;
+  }
+
+  .toggle-bool-switch {
+    // reset style
+    background-image: none;
+    box-shadow: none;
+    //
+
+    cursor: pointer;
+
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    width: $toggle-width;
+    height: $toggle-height;
+    background-color: $toggle-outer-default;
+    border-radius: 100vw;
+    cursor: pointer;
+    transition: $toggle-transition;
+
+    &::before {
+      // reset style
+      height: auto;
+      width: auto;
+      background-image: none;
+      //
+
+
+      content: "";
+      position: absolute;
+      top: $toggle-offset;
+      left: $toggle-offset;
+      bottom: $toggle-offset;
+      
+      aspect-ratio: 1 / 1;
+      
+      background-color: $toggle-inner-default;
+      border-radius: 50%;
+      box-shadow: 0 0 10px 5px rgba(0, 0, 0, 0.05);
+      transition: $toggle-transition;
+    }
+
+    &.on {
+      // reset style
+      background-image: none;
+      //
+      background: $link-primary-color;
+
+      &::before {
+        // reset style
+        left: $toggle-offset;
+        //
+
+        background-color: $toggle-inner-active;
+        $toggle-translate-x: calc(( #{$toggle-width} - #{$toggle-height} ));
+        transform: translateX($toggle-translate-x);
+      }
+    }
+  }
+}

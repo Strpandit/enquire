@@ -10,7 +10,10 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_23_093000) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_30_124500) do
+  # These are extensions that must be enabled in order to support this database
+  enable_extension "pg_catalog.plpgsql"
+
   create_table "accounts", force: :cascade do |t|
     t.string "full_name"
     t.string "email"
@@ -18,7 +21,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_23_093000) do
     t.string "state"
     t.string "district"
     t.string "city"
-    t.integer "pincode", limit: 6
+    t.bigint "pincode"
     t.string "password_digest"
     t.string "otp_pin"
     t.datetime "otp_sent_at"
@@ -34,10 +37,14 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_23_093000) do
     t.datetime "verified_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index "LOWER(email)", name: "index_accounts_on_lower_email", unique: true
-    t.index "LOWER(username)", name: "index_accounts_on_lower_username", unique: true
+    t.integer "wallet_balance_cents", default: 0, null: false
+    t.string "uid"
+    t.datetime "last_seen_at"
+    t.index "lower((email)::text)", name: "index_accounts_on_lower_email", unique: true
+    t.index "lower((username)::text)", name: "index_accounts_on_lower_username", unique: true, where: "(username IS NOT NULL)"
     t.index ["phone"], name: "index_accounts_on_phone", unique: true
     t.index ["reset_password_token_digest"], name: "index_accounts_on_reset_password_token_digest", unique: true
+    t.index ["uid"], name: "index_accounts_on_uid", unique: true
   end
 
   create_table "active_storage_attachments", force: :cascade do |t|
@@ -86,8 +93,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_23_093000) do
   end
 
   create_table "business_profile_categories", force: :cascade do |t|
-    t.integer "category_id", null: false
-    t.integer "business_profile_id", null: false
+    t.bigint "category_id", null: false
+    t.bigint "business_profile_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["business_profile_id", "category_id"], name: "idx_on_business_profile_id_category_id_4967096322", unique: true
@@ -96,14 +103,14 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_23_093000) do
   end
 
   create_table "business_profiles", force: :cascade do |t|
-    t.integer "account_id", null: false
+    t.bigint "account_id", null: false
     t.decimal "chat_price", precision: 8, scale: 2
     t.decimal "call_price", precision: 8, scale: 2
     t.decimal "v_call_price", precision: 8, scale: 2
     t.boolean "is_available", default: true
     t.boolean "gst_enabled", default: false
     t.string "gst_number"
-    t.integer "pincode", limit: 6
+    t.bigint "pincode"
     t.string "state"
     t.string "city"
     t.string "business_name"
@@ -127,12 +134,81 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_23_093000) do
     t.string "name"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index "LOWER(name)", name: "index_categories_on_lower_name", unique: true
+    t.index "lower((name)::text)", name: "index_categories_on_lower_name", unique: true
+  end
+
+  create_table "chat_conversations", force: :cascade do |t|
+    t.bigint "customer_account_id", null: false
+    t.bigint "business_profile_id", null: false
+    t.integer "status", default: 0, null: false
+    t.datetime "last_message_at"
+    t.text "last_message_preview"
+    t.datetime "last_read_by_customer_at"
+    t.datetime "last_read_by_business_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["business_profile_id"], name: "index_chat_conversations_on_business_profile_id"
+    t.index ["customer_account_id", "business_profile_id"], name: "idx_chat_conversations_on_customer_and_business", unique: true
+    t.index ["customer_account_id"], name: "index_chat_conversations_on_customer_account_id"
+  end
+
+  create_table "chat_messages", force: :cascade do |t|
+    t.bigint "chat_conversation_id", null: false
+    t.bigint "chat_session_id"
+    t.bigint "sender_account_id", null: false
+    t.integer "message_type", default: 0, null: false
+    t.text "content", null: false
+    t.datetime "sent_at", null: false
+    t.datetime "read_at"
+    t.json "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["chat_conversation_id", "created_at"], name: "idx_chat_messages_on_conversation_and_created_at"
+    t.index ["chat_conversation_id"], name: "index_chat_messages_on_chat_conversation_id"
+    t.index ["chat_session_id"], name: "index_chat_messages_on_chat_session_id"
+    t.index ["sender_account_id"], name: "index_chat_messages_on_sender_account_id"
+  end
+
+  create_table "chat_sessions", force: :cascade do |t|
+    t.bigint "chat_conversation_id", null: false
+    t.bigint "customer_account_id", null: false
+    t.bigint "business_profile_id", null: false
+    t.integer "status", default: 0, null: false
+    t.integer "price_per_minute_cents", null: false
+    t.datetime "requested_at", null: false
+    t.datetime "started_at"
+    t.datetime "ended_at"
+    t.datetime "last_billed_at"
+    t.integer "billable_seconds", default: 0, null: false
+    t.integer "billed_minutes", default: 0, null: false
+    t.integer "total_amount_cents", default: 0, null: false
+    t.string "end_reason"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["business_profile_id"], name: "index_chat_sessions_on_business_profile_id"
+    t.index ["chat_conversation_id", "status"], name: "idx_chat_sessions_on_conversation_and_status"
+    t.index ["chat_conversation_id"], name: "index_chat_sessions_on_chat_conversation_id"
+    t.index ["customer_account_id"], name: "index_chat_sessions_on_customer_account_id"
+  end
+
+  create_table "device_installations", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.integer "platform", default: 0, null: false
+    t.string "device_token", null: false
+    t.string "device_id"
+    t.boolean "active", default: true, null: false
+    t.datetime "last_seen_at"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "active"], name: "idx_device_installations_on_account_and_active"
+    t.index ["account_id"], name: "index_device_installations_on_account_id"
+    t.index ["device_token"], name: "index_device_installations_on_device_token", unique: true
   end
 
   create_table "favorites", force: :cascade do |t|
-    t.integer "account_id", null: false
-    t.integer "business_profile_id", null: false
+    t.bigint "account_id", null: false
+    t.bigint "business_profile_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["account_id", "business_profile_id"], name: "index_favorites_on_account_id_and_business_profile_id", unique: true
@@ -140,9 +216,28 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_23_093000) do
     t.index ["business_profile_id"], name: "index_favorites_on_business_profile_id"
   end
 
+  create_table "notifications", force: :cascade do |t|
+    t.bigint "recipient_account_id", null: false
+    t.bigint "actor_account_id"
+    t.string "notification_type", null: false
+    t.string "title", null: false
+    t.text "body", null: false
+    t.string "notifiable_type"
+    t.bigint "notifiable_id"
+    t.datetime "read_at"
+    t.datetime "push_sent_at"
+    t.jsonb "payload", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["actor_account_id"], name: "index_notifications_on_actor_account_id"
+    t.index ["notifiable_type", "notifiable_id"], name: "idx_notifications_on_notifiable"
+    t.index ["recipient_account_id", "read_at"], name: "idx_notifications_on_recipient_and_read_at"
+    t.index ["recipient_account_id"], name: "index_notifications_on_recipient_account_id"
+  end
+
   create_table "reviews", force: :cascade do |t|
-    t.integer "account_id", null: false
-    t.integer "business_profile_id", null: false
+    t.bigint "account_id", null: false
+    t.bigint "business_profile_id", null: false
     t.integer "rating", null: false
     t.text "comment"
     t.datetime "created_at", null: false
@@ -153,7 +248,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_23_093000) do
   end
 
   create_table "schedules", force: :cascade do |t|
-    t.integer "business_profile_id", null: false
+    t.bigint "business_profile_id", null: false
     t.integer "day_of_week"
     t.time "start_time"
     t.time "end_time"
@@ -163,14 +258,45 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_23_093000) do
     t.index ["business_profile_id"], name: "index_schedules_on_business_profile_id"
   end
 
+  create_table "wallet_transactions", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "chat_session_id"
+    t.integer "transaction_type", null: false
+    t.integer "amount_cents", null: false
+    t.integer "balance_after_cents", null: false
+    t.string "entry_type", null: false
+    t.string "reference_type"
+    t.bigint "reference_id"
+    t.string "description", null: false
+    t.json "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_wallet_transactions_on_account_id"
+    t.index ["chat_session_id"], name: "index_wallet_transactions_on_chat_session_id"
+    t.index ["reference_type", "reference_id"], name: "idx_wallet_transactions_on_reference"
+  end
+
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "business_profile_categories", "business_profiles"
   add_foreign_key "business_profile_categories", "categories"
   add_foreign_key "business_profiles", "accounts"
+  add_foreign_key "chat_conversations", "accounts", column: "customer_account_id"
+  add_foreign_key "chat_conversations", "business_profiles"
+  add_foreign_key "chat_messages", "accounts", column: "sender_account_id"
+  add_foreign_key "chat_messages", "chat_conversations"
+  add_foreign_key "chat_messages", "chat_sessions"
+  add_foreign_key "chat_sessions", "accounts", column: "customer_account_id"
+  add_foreign_key "chat_sessions", "business_profiles"
+  add_foreign_key "chat_sessions", "chat_conversations"
+  add_foreign_key "device_installations", "accounts"
   add_foreign_key "favorites", "accounts"
   add_foreign_key "favorites", "business_profiles"
+  add_foreign_key "notifications", "accounts", column: "actor_account_id"
+  add_foreign_key "notifications", "accounts", column: "recipient_account_id"
   add_foreign_key "reviews", "accounts"
   add_foreign_key "reviews", "business_profiles"
   add_foreign_key "schedules", "business_profiles"
+  add_foreign_key "wallet_transactions", "accounts"
+  add_foreign_key "wallet_transactions", "chat_sessions"
 end

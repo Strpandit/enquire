@@ -1,7 +1,7 @@
 class AccountBlueprint < Blueprinter::Base
   identifier :id
 
-  fields :full_name, :email, :phone, :username, :state, :district, :city, :pincode, :languages, :is_business, :is_verified, :verification_status
+  fields :uid, :full_name, :email, :phone, :username, :state, :district, :city, :pincode, :languages, :is_business, :is_verified, :verification_status, :wallet_balance_cents
 
   field :profile_pic_url do |account|
     account.profile_pic.attached? ? Rails.application.routes.url_helpers.url_for(account.profile_pic) : nil
@@ -25,7 +25,5 @@ class AccountBlueprint < Blueprinter::Base
     }
   end
 
-  association :business_profile, blueprint: BusinessProfileBlueprint do |account|
-    account.business_profile
-  end
+  association :business_profile, blueprint: BusinessProfileBlueprint, if: ->(_field_name, _account, options) { options[:include_business] }
 end

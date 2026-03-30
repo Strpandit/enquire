@@ -6,6 +6,8 @@ class BusinessProfile < ApplicationRecord
   has_many :categories, through: :business_profile_categories
   has_many :schedules, dependent: :destroy
   has_many :favorites, dependent: :destroy
+  has_many :chat_conversations, dependent: :destroy
+  has_many :chat_sessions, dependent: :destroy
 
   has_one_attached :gst_certificate
 
@@ -35,6 +37,10 @@ class BusinessProfile < ApplicationRecord
 
   def public_visible?
     approved?
+  end
+
+  def chat_price_cents
+    (chat_price.to_d * 100).to_i
   end
 
   private

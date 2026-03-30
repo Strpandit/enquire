@@ -11,7 +11,7 @@ module Api
 
       def show
         render json: {
-          account: AccountBlueprint.render_as_hash(current_account)
+          account: AccountBlueprint.render_as_hash(current_account, include_business: true)
         }, status: :ok
       end
 
@@ -20,7 +20,7 @@ module Api
 
         render json: {
           message: "Profile updated successfully",
-          account: AccountBlueprint.render_as_hash(current_account)
+          account: AccountBlueprint.render_as_hash(current_account, include_business: true)
         }, status: :ok
       end
 
@@ -35,6 +35,16 @@ module Api
         current_account.verification_status = :pending
         current_account.verification_rejection_reason = nil
         current_account.save!
+
+        Notifications::Creator.call(
+          recipient: current_account,
+          actor: current_account,
+          notifiable: current_account,
+          notification_type: "verification_submitted",
+          title: "Verification submitted",
+          body: "Your verification documents are under review.",
+          payload: { verification_status: current_account.verification_status }
+        )
 
         render json: {
           message: "Verification submitted successfully",
@@ -62,7 +72,7 @@ module Api
         unless params[:password].present?
           return render json: { message: "Password is required" }, status: :unprocessable_entity
         end
-        
+
         unless user.authenticate(params[:password])
           return render json: { message: "Incorrect password" }, status: :unauthorized
         end
@@ -77,10 +87,13 @@ module Api
       private
 
       def account_params
-        params.require(:account).permit(
+        permitted = params.require(:account).permit(
           :full_name, :phone, :state, :district, :city, :pincode, :password,
           :password_confirmation, :username, :profile_pic, languages: []
         )
+
+        permitted.delete(:username) if permitted[:username].to_s.strip.blank?
+        permitted
       end
 
       def verification_params

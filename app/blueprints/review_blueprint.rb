@@ -7,6 +7,10 @@ class ReviewBlueprint < Blueprinter::Base
     review.account.full_name
   end
 
+  field :reviewer_uid do |review|
+    review.account.uid
+  end
+
   field :reviewer_username do |review|
     review.account.username
   end

@@ -29,6 +29,7 @@ gem "rqrcode"
 gem 'acts_as_paranoid'
 gem 'dotenv-rails', groups: [:development, :test]
 gem 'blueprinter'
+gem 'googleauth'
 
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 gem "bcrypt", "~> 3.1.7"

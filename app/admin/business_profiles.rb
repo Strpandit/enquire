@@ -14,6 +14,14 @@ ActiveAdmin.register BusinessProfile do
       resource.update!(approval_status: :approved, approved_at: Time.current, rejection_reason: nil)
       resource.account.update!(is_business: true)
       AccountAuthMailer.approval_email(resource.account, resource.approved_at).deliver_later
+      Notifications::Creator.call(
+        recipient: resource.account,
+        notifiable: resource,
+        notification_type: "business_profile_approved",
+        title: "Business profile approved",
+        body: "Your Business profile is now live for users.",
+        payload: { business_profile_id: resource.id, approval_status: resource.approval_status }
+      )
     end
     redirect_to resource_path, notice: "Business profile approved"
   end
@@ -23,6 +31,14 @@ ActiveAdmin.register BusinessProfile do
       resource.update!(approval_status: :rejected, approved_at: nil, rejection_reason: "Rejected by admin")
       resource.account.update!(is_business: false)
       AccountAuthMailer.rejection_email(resource.account, resource.rejection_reason).deliver_later
+      Notifications::Creator.call(
+        recipient: resource.account,
+        notifiable: resource,
+        notification_type: "business_profile_rejected",
+        title: "Business profile rejected",
+        body: resource.rejection_reason.presence || "Your business profile was rejected by admin.",
+        payload: { business_profile_id: resource.id, approval_status: resource.approval_status, rejection_reason: resource.rejection_reason }
+      )
     end
     redirect_to resource_path, alert: "Business profile rejected"
   end

@@ -2,8 +2,8 @@ require "active_support/core_ext/integer/time"
 
 Rails.application.configure do
   # Settings specified here will take precedence over those in config/application.rb.
-  Rails.application.routes.default_url_options[:host] = "https://enquire.onrender.com"
-  config.active_storage.default_url_options = { host: "https://enquire.onrender.com" }
+  Rails.application.routes.default_url_options[:host] = "https://enquire-4kwv.onrender.com"
+  config.active_storage.default_url_options = { host: "https://enquire-4kwv.onrender.com" }
 
   # Code is not reloaded between requests.
   config.enable_reloading = false
@@ -45,6 +45,9 @@ Rails.application.configure do
   # Prevent health checks from clogging up the logs.
   config.silence_healthcheck_path = "/up"
 
+  config.action_cable.url = ENV.fetch("ACTION_CABLE_URL", "wss://enquire-4kwv.onrender.com/cable")
+  config.action_cable.allowed_request_origins = ENV.fetch("ACTION_CABLE_ALLOWED_ORIGINS", "https://enquire-4kwv.onrender.com").split(",")
+
   # Don't log any deprecations.
   config.active_support.report_deprecations = false
 
@@ -60,7 +63,7 @@ Rails.application.configure do
   config.action_mailer.raise_delivery_errors = true
   config.action_mailer.perform_deliveries = true
   # Set host to be used by links generated in mailer templates.
-  config.action_mailer.default_url_options = { host: ENV['MAILER_HOST'] || 'enquire.onrender.com' }
+  config.action_mailer.default_url_options = { host: ENV['MAILER_HOST'] || 'enquire-4kwv.onrender.com' }
   config.action_mailer.delivery_method = :smtp
   # Specify outgoing SMTP server. Remember to add smtp/* credentials via rails credentials:edit.
   config.action_mailer.smtp_settings = {

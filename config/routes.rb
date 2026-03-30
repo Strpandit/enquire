@@ -1,4 +1,5 @@
 Rails.application.routes.draw do
+  mount ActionCable.server => "/cable"
   devise_for :admin_users, ActiveAdmin::Devise.config
   ActiveAdmin.routes(self)
   get "p/:share_token", to: "profiles#show", as: :public_profile
@@ -24,23 +25,37 @@ Rails.application.routes.draw do
         post :favorite, on: :member
         delete :unfavorite, on: :member
         resources :reviews, only: [ :index, :create ]
+        resource :chat_request, only: [ :create ], controller: :chat_requests
       end
+      resources :chat_conversations, only: [ :index, :show, :create ] do
+        resources :chat_messages, only: [ :index, :create ] do
+          collection do
+            post :mark_read
+          end
+        end
+        resources :chat_sessions, only: [ :index ] do
+          post :accept, on: :member
+          post :decline, on: :member
+          post :end_session, on: :member
+          post :heartbeat, on: :member
+        end
+      end
+      resources :wallet_transactions, only: [ :index ]
+      resources :notifications, only: [ :index ] do
+        collection do
+          get :unread_count
+          patch :mark_all_read
+        end
+        member do
+          patch :mark_read
+        end
+      end
+      resources :device_installations, only: [ :create, :destroy ]
       resources :favorites, only: [ :index ]
       resources :schedules, except: [ :new, :edit ]
       resources :reviews, only: [ :update, :destroy ]
     end
   end
 
-  # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
-
-  # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
-  # Can be used by load balancers and uptime monitors to verify that the app is live.
   get "up" => "rails/health#show", as: :rails_health_check
-
-  # Render dynamic PWA files from app/views/pwa/* (remember to link manifest in application.html.erb)
-  # get "manifest" => "rails/pwa#manifest", as: :pwa_manifest
-  # get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker
-
-  # Defines the root path route ("/")
-  # root "posts#index"
 end

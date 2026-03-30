@@ -11,11 +11,27 @@ ActiveAdmin.register Account do
 
   member_action :approve_verification, method: :patch do
     resource.update!(verification_status: :approved, verified_at: Time.current, verification_rejection_reason: nil)
+    Notifications::Creator.call(
+      recipient: resource,
+      notifiable: resource,
+      notification_type: "verification_approved",
+      title: "Verification approved",
+      body: "Your account verification has been approved.",
+      payload: { verification_status: resource.verification_status }
+    )
     redirect_to resource_path, notice: "Account verification approved"
   end
 
   member_action :reject_verification, method: :patch do
     resource.update!(verification_status: :rejected, verified_at: nil, verification_rejection_reason: "Rejected by admin")
+    Notifications::Creator.call(
+      recipient: resource,
+      notifiable: resource,
+      notification_type: "verification_rejected",
+      title: "Verification rejected",
+      body: resource.verification_rejection_reason.presence || "Your account verification was rejected.",
+      payload: { verification_status: resource.verification_status, rejection_reason: resource.verification_rejection_reason }
+    )
     redirect_to resource_path, alert: "Account verification rejected"
   end
 

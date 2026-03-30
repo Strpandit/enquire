@@ -16,7 +16,7 @@ module Api
 
         if business_profiles.present?
           render json: {
-            business_profiles: BusinessProfileBlueprint.render_as_hash(business_profiles, host: request.base_url, viewer: current_account),
+            business_profiles: BusinessProfileBlueprint.render_as_hash(business_profiles, host: request.base_url, viewer: current_account, include_account: true),
             meta: pagination_meta(business_profiles)
           }, status: :ok
         else
@@ -30,7 +30,7 @@ module Api
         end
 
         render json: {
-          business_profile: BusinessProfileBlueprint.render_as_hash(@business_profile, host: request.base_url, viewer: current_account, include_reviews: true)
+          business_profile: BusinessProfileBlueprint.render_as_hash(@business_profile, host: request.base_url, viewer: current_account, include_account: true)
         }, status: :ok
       end
 
@@ -45,26 +45,49 @@ module Api
         business_profile.approved_at = nil
         business_profile.save!
         current_account.update!(is_business: false)
-        
+
         AccountAuthMailer.welcome_email(current_account).deliver_later if current_account.email.present?
+        Notifications::Creator.call(
+          recipient: current_account,
+          actor: current_account,
+          notifiable: business_profile,
+          notification_type: "business_profile_submitted",
+          title: "Business profile submitted",
+          body: "Your business profile has been sent for admin review.",
+          payload: { business_profile_id: business_profile.id, approval_status: business_profile.approval_status }
+        )
+
         render json: {
           message: "Business profile submitted for approval",
-          business_profile: BusinessProfileBlueprint.render_as_hash(business_profile)
+          business_profile: BusinessProfileBlueprint.render_as_hash(business_profile, include_account: true)
         }, status: :created
       end
 
       def update
+        was_rejected = @business_profile.rejected?
         @business_profile.assign_attributes(business_profile_params)
-        if @business_profile.rejected?
+        if was_rejected
           @business_profile.approval_status = :pending
           @business_profile.rejection_reason = nil
           @business_profile.approved_at = nil
         end
         @business_profile.save!
 
+        if was_rejected
+          Notifications::Creator.call(
+            recipient: current_account,
+            actor: current_account,
+            notifiable: @business_profile,
+            notification_type: "business_profile_resubmitted",
+            title: "Business profile resubmitted",
+            body: "Your updated business profile is back in review.",
+            payload: { business_profile_id: @business_profile.id, approval_status: @business_profile.approval_status }
+          )
+        end
+
         render json: {
           message: "Business profile updated successfully",
-          business_profile: BusinessProfileBlueprint.render_as_hash(@business_profile)
+          business_profile: BusinessProfileBlueprint.render_as_hash(@business_profile, include_account: true)
         }, status: :ok
       end
 
@@ -84,14 +107,15 @@ module Api
 
         share_url = public_profile_url(@business_profile.share_token, host: request.base_url)
         render json: {
+          name: @business_profile.account.full_name,
           share_url: share_url,
-          deep_link_url: "enquire://business_profiles/#{@business_profile.id}?share_token=#{@business_profile.share_token}",
+          deep_link_url: "enquire://business_profiles/#{@business_profile.account.uid}?share_token=#{@business_profile.share_token}",
           qr_code_svg: QrCodeSvg.generate(share_url)
         }, status: :ok
       end
 
       def favorite
-        current_account.favorites.find_or_create_by!(business_profile: @business_profile)
+        favorite = current_account.favorites.find_or_create_by!(business_profile: @business_profile)
         render json: { message: "Expert added to favorites" }, status: :created
       end
 

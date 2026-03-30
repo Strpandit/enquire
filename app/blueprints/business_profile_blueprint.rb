@@ -27,7 +27,7 @@ class BusinessProfileBlueprint < Blueprinter::Base
   end
 
   field :deep_link_url do |bp|
-    "enquire://business_profiles/#{bp.id}?share_token=#{bp.share_token}"
+    "enquire://business_profiles/#{bp.account.uid}?share_token=#{bp.share_token}"
   end
 
   field :gst_certificate_url do |bp|
@@ -36,6 +36,6 @@ class BusinessProfileBlueprint < Blueprinter::Base
 
   association :categories, blueprint: CategoryBlueprint
   association :schedules, blueprint: ScheduleBlueprint
-  association :reviews, blueprint: ReviewBlueprint, if: ->(_field_name, _bp, options) { options[:include_reviews] }
+  association :reviews, blueprint: ReviewBlueprint
   association :account, blueprint: AccountBlueprint, if: ->(_field_name, _bp, options) { options[:include_account] }
 end

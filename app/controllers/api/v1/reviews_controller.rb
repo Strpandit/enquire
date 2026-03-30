@@ -20,6 +20,8 @@ module Api
         review.assign_attributes(review_params)
         review.save!
 
+        notify_review_change(review, created: review.previous_changes.key?("id"))
+
         render json: {
           message: "Review submitted successfully",
           review: ReviewBlueprint.render_as_hash(review)
@@ -28,6 +30,7 @@ module Api
 
       def update
         @review.update!(review_params)
+        notify_review_change(@review, created: false)
 
         render json: {
           message: "Review updated successfully",
@@ -63,6 +66,20 @@ module Api
         render json: {
           errors: ["You are not allowed to modify this review"]
         }, status: :forbidden
+      end
+
+      def notify_review_change(review, created:)
+        return if @business_profile.account_id == current_account.id
+
+        Notifications::Creator.call(
+          recipient: @business_profile.account,
+          actor: current_account,
+          notifiable: review,
+          notification_type: created ? "review_created" : "review_updated",
+          title: created ? "New review received" : "Review updated",
+          body: "#{current_account.full_name} #{created ? 'left' : 'updated'} a #{review.rating}-star review on your profile.",
+          payload: { business_profile_id: @business_profile.id, review_id: review.id, rating: review.rating }
+        )
       end
     end
   end

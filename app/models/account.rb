@@ -9,6 +9,13 @@ class Account < ApplicationRecord
   has_many :reviews, dependent: :destroy
   has_many :favorites, dependent: :destroy
   has_many :favorite_business_profiles, through: :favorites, source: :business_profile
+  has_many :received_notifications, class_name: "Notification", foreign_key: :recipient_account_id, dependent: :destroy
+  has_many :sent_notifications, class_name: "Notification", foreign_key: :actor_account_id, dependent: :nullify
+  has_many :device_installations, dependent: :destroy
+  has_many :customer_chat_conversations, class_name: "ChatConversation", foreign_key: :customer_account_id, dependent: :destroy
+  has_many :sent_chat_messages, class_name: "ChatMessage", foreign_key: :sender_account_id, dependent: :nullify
+  has_many :wallet_transactions, dependent: :destroy
+  has_many :customer_chat_sessions, class_name: "ChatSession", foreign_key: :customer_account_id, dependent: :nullify
 
   has_one_attached :profile_pic
   has_one_attached :pan_card
@@ -28,15 +35,18 @@ class Account < ApplicationRecord
   }, default: :unsubmitted
 
   before_validation :normalize_email
+  before_validation :ensure_uid, on: :create
   before_validation :normalize_username
   before_validation :normalize_languages
 
+  validates :uid, presence: true, uniqueness: true
   validates :full_name, presence: true, length: { minimum: 3, maximum: 80 }
   validates :email, presence: true, uniqueness: { case_sensitive: false }, format: { with: EMAIL_REGEX }
   validates :phone, uniqueness: true, format: { with: PHONE_REGEX, message: "must be a valid 10-digit Indian mobile number" }, allow_blank: true
-  validates :username, uniqueness: { case_sensitive: false }, format: { with: USERNAME_REGEX, message: "can only contain letters, numbers, and underscores" }, length: { minimum: 3, maximum: 30 }, allow_blank: true
+  validates :username, uniqueness: { case_sensitive: false }, format: { with: USERNAME_REGEX, message: "can only contain letters, numbers, and underscores" }, length: { minimum: 3, maximum: 30 }, if: :username?
   validates :password, length: { minimum: 8 }, if: :password_required?
   validates :pincode, format: { with: PINCODE_REGEX, message: "must be 6 digits" }, allow_blank: true
+  validates :wallet_balance_cents, numericality: { greater_than_or_equal_to: 0, only_integer: true }
   validate :phone_required_for_verification_submission
   validate :verification_documents_complete_for_submission
 
@@ -96,14 +106,37 @@ class Account < ApplicationRecord
     )
   end
 
+  def wallet_balance
+    wallet_balance_cents.to_i / 100.0
+  end
+
+  def business_account?
+    business_profile.present? && is_business?
+  end
+
+  def online?
+    Rails.cache.read("account_presence:#{id}") == true
+  end
+
+  def unread_notifications_count
+    received_notifications.unread.count
+  end
+
   private
 
   def normalize_email
     self.email = email.to_s.strip.downcase
   end
 
+  def ensure_uid
+    self.uid ||= loop do
+      candidate = SecureRandom.alphanumeric(6).downcase
+      break candidate unless self.class.exists?(uid: candidate)
+    end
+  end
+
   def normalize_username
-    self.username = username.to_s.strip.downcase
+    self.username = username.to_s.strip.downcase.presence
   end
 
   def normalize_languages
@@ -111,24 +144,24 @@ class Account < ApplicationRecord
   end
 
   def password_required?
-    password.present? || new_record?
+    new_record? || password.present?
   end
 
   def phone_required_for_verification_submission
-    return unless pending?
-    return if phone.present?
+    return unless verification_status == "pending" && phone.blank?
 
-    errors.add(:phone, "is required before requesting verification")
+    errors.add(:phone, "must be present before submitting verification")
   end
 
   def verification_documents_complete_for_submission
-    return unless pending?
-    return if pan_card.attached? && aadhaar_card.attached? && passport_photo.attached?
+    return unless verification_status == "pending"
 
-    errors.add(:base, "PAN card, Aadhaar card, and passport size photo are required for verification")
+    errors.add(:pan_card, "must be attached") unless pan_card.attached?
+    errors.add(:aadhaar_card, "must be attached") unless aadhaar_card.attached?
+    errors.add(:passport_photo, "must be attached") unless passport_photo.attached?
   end
 
-  def digest_token(token)
-    Digest::SHA256.hexdigest(token)
+  def digest_token(raw_token)
+    Digest::SHA256.hexdigest(raw_token)
   end
 end

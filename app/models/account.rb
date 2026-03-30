@@ -35,7 +35,7 @@ class Account < ApplicationRecord
   }, default: :unsubmitted
 
   before_validation :normalize_email
-  before_validation :ensure_uid, on: :create
+  before_validation :ensure_uid
   before_validation :normalize_username
   before_validation :normalize_languages
 

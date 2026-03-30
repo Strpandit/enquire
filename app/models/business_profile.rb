@@ -15,6 +15,12 @@ class BusinessProfile < ApplicationRecord
 
   GST_REGEX = /\A[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]\z/
   PINCODE_REGEX = /\A\d{6}\z/
+  PDF_CONTENT_TYPES = %w[application/pdf].freeze
+  PDF_EXTENSIONS = %w[.pdf].freeze
+  MAX_PDF_SIZE = 2.megabytes
+  DANGEROUS_ATTACHMENT_EXTENSIONS = %w[
+    .svg .js .mjs .html .htm .xhtml .xml .exe .bat .cmd .sh .php .jsp .aspx .cgi .pl
+  ].freeze
 
   before_validation :normalize_gst_number
   before_validation :ensure_share_token, on: :create
@@ -25,11 +31,12 @@ class BusinessProfile < ApplicationRecord
   validates :about, length: { maximum: 1_000 }, allow_blank: true
   validates :chat_price, :call_price, :v_call_price, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
   validates :gst_number, format: { with: GST_REGEX, message: "must be a valid GST number" }, allow_blank: true, if: :gst_enabled?
-  validates :gst_number, uniqueness: true, if: :gst_number_present?
+  validates :gst_number, uniqueness: true, if: :gst_number?
   validates :pincode, format: { with: PINCODE_REGEX, message: "must be 6 digits" }, allow_blank: true
   validate :gst_number_presence_when_enabled
   validate :phone_must_exist_for_business_profile
   validate :category_limit
+  validate :validate_gst_certificate_attachment
 
   def average_rating
     avg_rating || 0.0
@@ -70,5 +77,58 @@ class BusinessProfile < ApplicationRecord
 
   def ensure_share_token
     self.share_token ||= SecureRandom.urlsafe_base64(10)
+  end
+
+  def validate_gst_certificate_attachment
+    return unless gst_certificate.attached?
+
+    blob = gst_certificate.blob
+    return errors.add(:gst_certificate, "upload is invalid") if blob.blank?
+
+    if dangerous_attachment_filename?(blob.filename.to_s)
+      errors.add(:gst_certificate, "contains a forbidden file extension")
+      return
+    end
+
+    if suspicious_double_extension?(blob.filename.to_s, allowed_extensions: PDF_EXTENSIONS)
+      errors.add(:gst_certificate, "filename contains a suspicious double extension")
+      return
+    end
+
+    unless PDF_CONTENT_TYPES.include?(blob.content_type.to_s.downcase)
+      errors.add(:gst_certificate, "must be a PDF document")
+    end
+
+    unless PDF_EXTENSIONS.include?(File.extname(blob.filename.to_s).downcase)
+      errors.add(:gst_certificate, "must use .pdf format")
+    end
+
+    if blob.byte_size > MAX_PDF_SIZE
+      errors.add(:gst_certificate, "must be 2 MB or smaller")
+    end
+  end
+
+  def dangerous_attachment_filename?(filename)
+    extensions = filename_extensions(filename)
+    extensions.any? { |extension| DANGEROUS_ATTACHMENT_EXTENSIONS.include?(extension) }
+  end
+
+  def suspicious_double_extension?(filename, allowed_extensions:)
+    extensions = filename_extensions(filename)
+    return false if extensions.empty?
+
+    extensions[0...-1].any? do |extension|
+      DANGEROUS_ATTACHMENT_EXTENSIONS.include?(extension) || !allowed_extensions.include?(extension)
+    end
+  end
+
+  def filename_extensions(filename)
+    name = File.basename(filename.to_s.downcase)
+    return [] if name.blank?
+
+    segments = name.split(".")
+    return [] if segments.length <= 1
+
+    segments.drop(1).map { |segment| ".#{segment}" }
   end
 end

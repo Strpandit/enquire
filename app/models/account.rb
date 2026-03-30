@@ -26,6 +26,12 @@ class Account < ApplicationRecord
   PHONE_REGEX = /\A[6-9]\d{9}\z/
   USERNAME_REGEX = /\A[a-z0-9_]+\z/i
   PINCODE_REGEX = /\A\d{6}\z/
+  JPEG_CONTENT_TYPES = %w[image/jpeg image/jpg].freeze
+  JPEG_EXTENSIONS = %w[.jpg .jpeg].freeze
+  MAX_IMAGE_SIZE = 1.megabyte
+  DANGEROUS_ATTACHMENT_EXTENSIONS = %w[
+    .svg .js .mjs .html .htm .xhtml .xml .exe .bat .cmd .sh .php .jsp .aspx .cgi .pl
+  ].freeze
 
   enum :verification_status, {
     unsubmitted: 0,
@@ -49,6 +55,10 @@ class Account < ApplicationRecord
   validates :wallet_balance_cents, numericality: { greater_than_or_equal_to: 0, only_integer: true }
   validate :phone_required_for_verification_submission
   validate :verification_documents_complete_for_submission
+  validate :validate_profile_pic_attachment
+  validate :validate_pan_card_attachment
+  validate :validate_aadhaar_card_attachment
+  validate :validate_passport_photo_attachment
 
   def languages
     JSON.parse(self[:languages].presence || "[]")
@@ -159,6 +169,76 @@ class Account < ApplicationRecord
     errors.add(:pan_card, "must be attached") unless pan_card.attached?
     errors.add(:aadhaar_card, "must be attached") unless aadhaar_card.attached?
     errors.add(:passport_photo, "must be attached") unless passport_photo.attached?
+  end
+
+  def validate_profile_pic_attachment
+    validate_jpeg_attachment(:profile_pic, label: "profile picture")
+  end
+
+  def validate_pan_card_attachment
+    validate_jpeg_attachment(:pan_card, label: "PAN card")
+  end
+
+  def validate_aadhaar_card_attachment
+    validate_jpeg_attachment(:aadhaar_card, label: "Aadhaar card")
+  end
+
+  def validate_passport_photo_attachment
+    validate_jpeg_attachment(:passport_photo, label: "passport photo")
+  end
+
+  def validate_jpeg_attachment(name, label:)
+    attachment = public_send(name)
+    return unless attachment.attached?
+
+    blob = attachment.blob
+    return errors.add(name, "#{label} upload is invalid") if blob.blank?
+
+    if dangerous_attachment_filename?(blob.filename.to_s)
+      errors.add(name, "#{label} contains a forbidden file extension")
+      return
+    end
+
+    if suspicious_double_extension?(blob.filename.to_s, allowed_extensions: JPEG_EXTENSIONS)
+      errors.add(name, "#{label} filename contains a suspicious double extension")
+      return
+    end
+
+    unless JPEG_CONTENT_TYPES.include?(blob.content_type.to_s.downcase)
+      errors.add(name, "#{label} must be a JPG or JPEG image")
+    end
+
+    unless JPEG_EXTENSIONS.include?(File.extname(blob.filename.to_s).downcase)
+      errors.add(name, "#{label} must use .jpg or .jpeg format")
+    end
+
+    if blob.byte_size > MAX_IMAGE_SIZE
+      errors.add(name, "#{label} must be 1 MB or smaller")
+    end
+  end
+
+  def dangerous_attachment_filename?(filename)
+    extensions = filename_extensions(filename)
+    extensions.any? { |extension| DANGEROUS_ATTACHMENT_EXTENSIONS.include?(extension) }
+  end
+
+  def suspicious_double_extension?(filename, allowed_extensions:)
+    extensions = filename_extensions(filename)
+    return false if extensions.empty?
+
+    extensions[0...-1].any? do |extension|
+      DANGEROUS_ATTACHMENT_EXTENSIONS.include?(extension) || !allowed_extensions.include?(extension)
+    end
+  end
+
+  def filename_extensions(filename)
+    name = File.basename(filename.to_s.downcase)
+    return [] if name.blank?
+
+    segments = name.split(".")
+    return [] if segments.length <= 1
+
+    segments.drop(1).map { |segment| ".#{segment}" }
   end
 
   def digest_token(raw_token)

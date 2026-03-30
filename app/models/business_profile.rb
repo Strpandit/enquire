@@ -25,7 +25,7 @@ class BusinessProfile < ApplicationRecord
   validates :about, length: { maximum: 1_000 }, allow_blank: true
   validates :chat_price, :call_price, :v_call_price, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
   validates :gst_number, format: { with: GST_REGEX, message: "must be a valid GST number" }, allow_blank: true, if: :gst_enabled?
-  validates :gst_number, uniqueness: true, allow_blank: true
+  validates :gst_number, uniqueness: true, if: :gst_number_present?
   validates :pincode, format: { with: PINCODE_REGEX, message: "must be 6 digits" }, allow_blank: true
   validate :gst_number_presence_when_enabled
   validate :phone_must_exist_for_business_profile
@@ -46,7 +46,8 @@ class BusinessProfile < ApplicationRecord
   private
 
   def normalize_gst_number
-    self.gst_number = gst_number.to_s.strip.upcase
+    normalized_gst = gst_number.to_s.strip.upcase
+    self.gst_number = normalized_gst.presence
   end
 
   def gst_number_presence_when_enabled

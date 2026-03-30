@@ -45,7 +45,7 @@ module Api
 
         if account.present?
           account.generate_password_reset_otp!
-          AccountAuthMailer.forgot_password_otp(account).deliver_now
+          AccountAuthMailer.forgot_password_otp(account).deliver_later
         end
 
         render json: {
@@ -91,7 +91,7 @@ module Api
           password_confirmation: reset_password_params[:password_confirmation]
         )
         account.clear_password_reset_credentials!
-        AccountAuthMailer.password_reset_confirmation(account).deliver_now
+        AccountAuthMailer.password_reset_confirmation(account).deliver_later
 
         render json: { message: "Password reset successfully" }, status: :ok
       end
@@ -132,3 +132,4 @@ module Api
     end
   end
 end
+

@@ -407,6 +407,11 @@ GEM
       faraday (>= 0.17.5, < 3.a)
       jwt (>= 1.5, < 4.0)
       multi_json (~> 1.10)
+    solid_cable (3.0.12)
+      actioncable (>= 7.2)
+      activejob (>= 7.2)
+      activerecord (>= 7.2)
+      railties (>= 7.2)
     sprockets (4.2.2)
       concurrent-ruby (~> 1.0)
       logger
@@ -490,6 +495,7 @@ DEPENDENCIES
   rubocop-rails-omakase
   sass-rails
   selenium-webdriver
+  solid_cable
   sprockets
   stimulus-rails
   thruster

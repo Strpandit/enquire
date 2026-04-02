@@ -173,9 +173,12 @@ module Api
       def apply_search(scope)
         if params[:q].present?
           query = "%#{params[:q].to_s.downcase.strip}%"
-          scope = scope.where(
-            "LOWER(business_name) LIKE :query OR LOWER(city) LIKE :query OR LOWER(state) LIKE :query",
-            query: query
+          scope = scope.joins(:account).where(
+            "business_profiles.business_name ILIKE :query
+            OR business_profiles.city ILIKE :query
+            OR business_profiles.state ILIKE :query
+            OR accounts.full_name ILIKE :query",
+            query: "%#{query}%"
           )
         end
 

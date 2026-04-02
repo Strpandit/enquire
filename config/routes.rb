@@ -3,6 +3,7 @@ Rails.application.routes.draw do
   devise_for :admin_users, ActiveAdmin::Devise.config
   ActiveAdmin.routes(self)
   get "p/:share_token", to: "profiles#show", as: :public_profile
+  get "expert/:uid", to: "profiles#expert", as: :public_expert
 
   namespace :api do
     namespace :v1 do
@@ -24,6 +25,9 @@ Rails.application.routes.draw do
         get :qr_code, on: :member
         post :favorite, on: :member
         delete :unfavorite, on: :member
+        collection do
+          get "uid/:uid", to: "business_profiles#show_by_uid"
+        end
         resources :reviews, only: [ :index, :create ]
         resource :chat_request, only: [ :create ], controller: :chat_requests
       end

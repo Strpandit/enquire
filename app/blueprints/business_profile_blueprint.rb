@@ -27,11 +27,11 @@ class BusinessProfileBlueprint < Blueprinter::Base
     host = options[:host]
     next if host.blank?
 
-    Rails.application.routes.url_helpers.public_profile_url(bp.share_token, host: host)
+    Rails.application.routes.url_helpers.public_expert_url(bp.account.uid, host: host)
   end
 
   field :deep_link_url do |bp|
-    "enquire://business_profiles/#{bp.account.uid}?share_token=#{bp.share_token}"
+    "previewtax://expert/#{bp.account.uid}"
   end
 
   field :gst_certificate_url do |bp|

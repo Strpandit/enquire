@@ -1,8 +1,8 @@
 module Api
   module V1
     class BusinessProfilesController < BaseController
-      skip_before_action :authorize_request, only: [ :index, :show, :qr_code ]
-      before_action :assign_optional_current_account, only: [ :index, :show, :qr_code ]
+      skip_before_action :authorize_request, only: [ :index, :show, :show_by_uid, :qr_code ]
+      before_action :assign_optional_current_account, only: [ :index, :show, :show_by_uid, :qr_code ]
       before_action :set_business_profile, only: [ :show, :update, :destroy, :qr_code, :favorite, :unfavorite ]
       before_action :authorize_request, only: [ :create, :update, :destroy, :favorite, :unfavorite ]
       before_action :ensure_owner!, only: [ :update, :destroy ]
@@ -105,12 +105,31 @@ module Api
           raise ActiveRecord::RecordNotFound, "Business profile not found"
         end
 
-        share_url = public_profile_url(@business_profile.share_token, host: request.base_url)
+        share_url = public_expert_url(@business_profile.account.uid, host: request.base_url)
         render json: {
           name: @business_profile.account.full_name,
           share_url: share_url,
-          deep_link_url: "enquire://business_profiles/#{@business_profile.account.uid}?share_token=#{@business_profile.share_token}",
+          deep_link_url: "previewtax://expert/#{@business_profile.account.uid}",
           qr_code_svg: QrCodeSvg.generate(share_url)
+        }, status: :ok
+      end
+
+      def show_by_uid
+        business_profile = BusinessProfile.includes(:account, :categories, :schedules, reviews: :account)
+          .joins(:account)
+          .find_by!(accounts: { uid: params[:uid] })
+
+        unless business_profile.approved? || (@current_account && business_profile.account_id == @current_account.id)
+          raise ActiveRecord::RecordNotFound, "Business profile not found"
+        end
+
+        render json: {
+          business_profile: BusinessProfileBlueprint.render_as_hash(
+            business_profile,
+            host: request.base_url,
+            viewer: current_account,
+            include_account: true
+          )
         }, status: :ok
       end
 

@@ -115,11 +115,19 @@ module Api
       end
 
       def favorite
+        if @business_profile.account_id == current_account.id
+          return render json: { errors: [ "You cannot favorite your own business profile" ] }, status: :unprocessable_entity
+        end
+
         favorite = current_account.favorites.find_or_create_by!(business_profile: @business_profile)
         render json: { message: "Expert added to favorites" }, status: :created
       end
 
       def unfavorite
+        if @business_profile.account_id == current_account.id
+          return render json: { errors: [ "You cannot favorite your own business profile" ] }, status: :unprocessable_entity
+        end
+
         favorite = current_account.favorites.find_by!(business_profile: @business_profile)
         favorite.destroy!
         render json: { message: "Expert removed from favorites" }, status: :ok

@@ -19,11 +19,7 @@ module Notifications
     def call
       return if recipient.blank?
 
-      notification = collapse ? find_or_refresh_collapsed_notification! : build_notification!
-
-      Notifications::Broadcaster.broadcast(notification)
-      PushNotificationDeliveryJob.perform_later(notification.id) if push
-      notification
+      collapse ? find_or_refresh_collapsed_notification! : build_notification!
     end
 
     private
@@ -35,22 +31,24 @@ module Notifications
     end
 
     def find_or_refresh_collapsed_notification!
-      notification = Notification.unread.find_by(
-        recipient_account: recipient,
-        actor_account: actor,
-        notification_type: notification_type,
-        notifiable: notifiable
-      )
+      Notification.transaction do
+        notification = Notification.unread.lock.find_by(
+          recipient_account: recipient,
+          actor_account: actor,
+          notification_type: notification_type,
+          notifiable: notifiable
+        )
 
-      return build_notification! if notification.blank?
+        return build_notification! if notification.blank?
 
-      notification.update!(
-        title: title,
-        body: body,
-        payload: payload,
-        push_sent_at: nil
-      )
-      notification
+        notification.update!(
+          title: title,
+          body: body,
+          payload: payload,
+          push_sent_at: nil
+        )
+        notification
+      end
     end
 
     def notification_attributes

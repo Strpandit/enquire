@@ -17,7 +17,6 @@ module Api
       def mark_read
         notification = current_account.received_notifications.find(params[:id])
         notification.mark_as_read!
-        Notifications::Broadcaster.broadcast_read(notification)
 
         render json: {
           message: "Notification marked as read",
@@ -29,8 +28,12 @@ module Api
       def mark_all_read
         unread_scope = current_account.received_notifications.unread
         now = Time.current
+
         updated_count = unread_scope.update_all(read_at: now)
-        Notifications::Broadcaster.broadcast_all_read(current_account) if updated_count.positive?
+
+        if updated_count.positive?
+          Notifications::Broadcaster.broadcast_all_read(current_account)
+        end
 
         render json: {
           message: "All notifications marked as read",

@@ -1,5 +1,6 @@
 ActiveAdmin.setup do |config|
-  config.site_title = "Enquire Admin"
+  config.site_title = "Preview Tax Admin"
+  config.site_title_image = "preview-tax-logo-cropped.png"
   config.default_namespace = :admin
   config.authentication_method = :authenticate_admin_user!
   config.current_user_method = :current_admin_user

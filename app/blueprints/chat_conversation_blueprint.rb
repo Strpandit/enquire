@@ -24,7 +24,7 @@ class ChatConversationBlueprint < Blueprinter::Base
       account_id: profile.account_id,
       account_uid: owner.uid,
       chat_price: profile.chat_price,
-      is_available: profile.is_available,
+      is_available: profile.currently_available?,
       online: owner.online?,
       last_seen_at: owner.last_seen_at
     }

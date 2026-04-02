@@ -8,7 +8,7 @@ module Api
                          .page(params[:page]).per(per_page)
 
         render json: {
-          business_profiles: BusinessProfileBlueprint.render_as_hash(favorites),
+          business_profiles: BusinessProfileBlueprint.render_as_hash(favorites, include_account: true),
           meta: pagination_meta(favorites)
         }, status: :ok
       end

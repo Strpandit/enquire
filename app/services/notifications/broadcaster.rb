@@ -1,22 +1,11 @@
 module Notifications
   class Broadcaster
-    def self.broadcast(notification)
+    def self.broadcast(notification, event = "created")
       ActionCable.server.broadcast(
         "notifications_#{notification.recipient_account_id}",
         {
           type: "notification",
-          event: "created",
-          notification: NotificationBlueprint.render_as_hash(notification)
-        }
-      )
-    end
-
-    def self.broadcast_read(notification)
-      ActionCable.server.broadcast(
-        "notifications_#{notification.recipient_account_id}",
-        {
-          type: "notification",
-          event: "read",
+          event: event,
           notification: NotificationBlueprint.render_as_hash(notification)
         }
       )
@@ -32,5 +21,10 @@ module Notifications
         }
       )
     end
+
+    def self.channel_for(account_id)
+      "notifications_#{account_id}"
+    end
+    
   end
 end

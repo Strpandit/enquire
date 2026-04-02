@@ -7,6 +7,10 @@ class AccountBlueprint < Blueprinter::Base
     account.profile_pic.attached? ? Rails.application.routes.url_helpers.url_for(account.profile_pic) : nil
   end
 
+  field :profile_pic do |account|
+    account.profile_pic_details
+  end
+
   field :verified_badge do |account|
     account.is_verified?
   end

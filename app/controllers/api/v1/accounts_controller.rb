@@ -97,7 +97,7 @@ module Api
       end
 
       def verification_params
-        params.permit(:phone, :pan_card, :aadhaar_card, :passport_photo)
+        params.permit( :pan_card, :aadhaar_card, :passport_photo)
       end
     end
   end

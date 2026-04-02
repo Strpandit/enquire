@@ -132,6 +132,10 @@ class Account < ApplicationRecord
     received_notifications.unread.count
   end
 
+  def profile_pic_details
+    attachment_details_for(profile_pic)
+  end
+
   private
 
   def normalize_email
@@ -215,6 +219,20 @@ class Account < ApplicationRecord
     if blob.byte_size > MAX_IMAGE_SIZE
       errors.add(name, "#{label} must be 1 MB or smaller")
     end
+  end
+
+  def attachment_details_for(attachment)
+    return nil unless attachment.attached?
+
+    blob = attachment.blob
+    return nil if blob.blank?
+
+    {
+      url: Rails.application.routes.url_helpers.url_for(attachment),
+      filename: blob.filename.to_s,
+      content_type: blob.content_type,
+      byte_size: blob.byte_size
+    }
   end
 
   def dangerous_attachment_filename?(filename)

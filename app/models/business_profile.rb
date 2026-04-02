@@ -38,6 +38,27 @@ class BusinessProfile < ApplicationRecord
   validate :category_limit
   validate :validate_gst_certificate_attachment
 
+  def currently_available?(now: Time.current.in_time_zone(Time.zone))
+    return false unless is_available?
+    return true if schedules.where(availability_type: "always").exists?
+
+    custom_schedules = if schedules.loaded?
+      schedules.select(&:custom?)
+    else
+      schedules.where(availability_type: "custom")
+    end
+
+    return true if custom_schedules.blank?
+
+    custom_schedules.any? do |schedule|
+      schedule.day_of_week == now.wday && schedule.covers_time?(now)
+    end
+  end
+
+  def gst_certificate_details
+    attachment_details_for(gst_certificate)
+  end
+
   def average_rating
     avg_rating || 0.0
   end
@@ -77,6 +98,20 @@ class BusinessProfile < ApplicationRecord
 
   def ensure_share_token
     self.share_token ||= SecureRandom.urlsafe_base64(10)
+  end
+
+  def attachment_details_for(attachment)
+    return nil unless attachment.attached?
+
+    blob = attachment.blob
+    return nil if blob.blank?
+
+    {
+      url: Rails.application.routes.url_helpers.url_for(attachment),
+      filename: blob.filename.to_s,
+      content_type: blob.content_type,
+      byte_size: blob.byte_size
+    }
   end
 
   def validate_gst_certificate_attachment

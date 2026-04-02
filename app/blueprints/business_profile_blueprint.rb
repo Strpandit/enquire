@@ -5,6 +5,10 @@ class BusinessProfileBlueprint < Blueprinter::Base
          :is_available, :gst_enabled, :gst_number, :state, :city, :pincode, :avg_rating,
          :reviews_count, :approval_status
 
+  field :currently_available do |bp|
+    bp.currently_available?
+  end
+
   field :rejection_reason do |bp, options|
     viewer = options[:viewer]
     viewer && viewer.id == bp.account_id ? bp.rejection_reason : nil
@@ -32,6 +36,10 @@ class BusinessProfileBlueprint < Blueprinter::Base
 
   field :gst_certificate_url do |bp|
     bp.gst_certificate.attached? ? Rails.application.routes.url_helpers.url_for(bp.gst_certificate) : nil
+  end
+
+  field :gst_certificate do |bp|
+    bp.gst_certificate_details
   end
 
   association :categories, blueprint: CategoryBlueprint

@@ -80,6 +80,7 @@ module Api
       end
 
       def ensure_owner!
+        return render json: { errors: [ "Schedule not found" ] }, status: :not_found if @schedule.blank?
         return if @schedule.business_profile_id == current_business_profile.id
 
         render json: { errors: [ "You are not allowed to modify this schedule" ] }, status: :forbidden

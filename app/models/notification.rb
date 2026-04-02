@@ -37,7 +37,7 @@ class Notification < ApplicationRecord
     end
   end
 
-  def broadcast_notification
+  def broadcast_notification(event)
     Notifications::Broadcaster.broadcast(self, event)
   end
 

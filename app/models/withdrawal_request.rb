@@ -1,7 +1,7 @@
 class WithdrawalRequest < ApplicationRecord
   belongs_to :account
 
-  enum status: { pending: 0, approved: 1, completed: 2, rejected: 3 }
+  enum :status, { pending: 0, approved: 1, completed: 2, rejected: 3 }
 
   validates :account_id, :amount_cents, :upi_id, presence: true
   validates :amount_cents, numericality: { greater_than: 0, only_integer: true }

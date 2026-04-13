@@ -44,6 +44,19 @@ Rails.application.routes.draw do
           post :heartbeat, on: :member
         end
       end
+      resources :call_histories, only: [ :index, :create ] do
+        member do
+          post :end_call
+        end
+      end
+      resources :withdrawal_requests, only: [ :index, :create ] do
+        member do
+          post :cancel
+        end
+      end
+      post "agora/token", to: "agora#token"
+      post "cashfree/payments", to: "cashfree_payments#create"
+      post "cashfree/webhook", to: "cashfree_payments#webhook"
       resources :wallet_transactions, only: [ :index ]
       resources :notifications, only: [ :index ] do
         collection do

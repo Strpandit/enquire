@@ -9,7 +9,7 @@ module Api
       before_action :ensure_approved_for_favorite!, only: [ :favorite, :unfavorite ]
 
       def index
-        business_profiles = BusinessProfile.includes(:account, :categories, :schedules)
+        business_profiles = BusinessProfile.includes(account: { profile_pic_attachment: :blob }, categories: {}, schedules: {})
         business_profiles = business_profiles.where(approval_status: :approved)
         business_profiles = apply_search(business_profiles)
         business_profiles = business_profiles.order(avg_rating: :desc, created_at: :desc).page(params[:page]).per(per_page)
@@ -115,7 +115,7 @@ module Api
       end
 
       def show_by_uid
-        business_profile = BusinessProfile.includes(:account, :categories, :schedules, reviews: :account)
+        business_profile = BusinessProfile.includes(account: { profile_pic_attachment: :blob }, categories: {}, schedules: {}, reviews: { account: { profile_pic_attachment: :blob } })
           .joins(:account)
           .find_by!(accounts: { uid: params[:uid] })
 
@@ -155,7 +155,7 @@ module Api
       private
 
       def set_business_profile
-        @business_profile = BusinessProfile.includes(:account, :categories, :schedules, reviews: :account).find(params[:id])
+        @business_profile = BusinessProfile.includes(account: { profile_pic_attachment: :blob }, categories: {}, schedules: {}, reviews: { account: { profile_pic_attachment: :blob } }).find(params[:id])
       end
 
       def ensure_owner!

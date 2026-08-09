@@ -1,7 +1,23 @@
 class AccountBlueprint < Blueprinter::Base
   identifier :id
 
-  fields :uid, :full_name, :email, :phone, :username, :state, :district, :city, :pincode, :languages, :is_business, :is_verified, :verification_status, :wallet_balance_cents, :earnings_balance_cents
+  fields :uid, :full_name, :username, :state, :district, :city, :pincode, :languages, :is_business, :is_verified, :verification_status, :verified_at, :verification_expires_at, :days_remaining
+
+  field :email do |account, options|
+    (options[:include_private] || options[:viewer]&.id == account.id) ? account.email : nil
+  end
+
+  field :phone do |account, options|
+    (options[:include_private] || options[:viewer]&.id == account.id) ? account.phone : nil
+  end
+
+  field :wallet_balance_cents do |account, options|
+    (options[:include_private] || options[:viewer]&.id == account.id) ? account.wallet_balance_cents : nil
+  end
+
+  field :earnings_balance_cents do |account, options|
+    (options[:include_private] || options[:viewer]&.id == account.id) ? account.earnings_balance_cents : nil
+  end
 
   field :profile_pic_url do |account|
     account.profile_pic.attached? ? Rails.application.routes.url_helpers.url_for(account.profile_pic) : nil
@@ -25,7 +41,9 @@ class AccountBlueprint < Blueprinter::Base
     {
       pan_card_url: account.pan_card.attached? ? Rails.application.routes.url_helpers.url_for(account.pan_card) : nil,
       aadhaar_card_url: account.aadhaar_card.attached? ? Rails.application.routes.url_helpers.url_for(account.aadhaar_card) : nil,
-      passport_photo_url: account.passport_photo.attached? ? Rails.application.routes.url_helpers.url_for(account.passport_photo) : nil
+      aadhaar_card_back_url: account.respond_to?(:aadhaar_card_back) && account.aadhaar_card_back.attached? ? Rails.application.routes.url_helpers.url_for(account.aadhaar_card_back) : nil,
+      passport_photo_url: account.passport_photo.attached? ? Rails.application.routes.url_helpers.url_for(account.passport_photo) : nil,
+      education_documents_urls: account.respond_to?(:education_documents) && account.education_documents.attached? ? account.education_documents.map { |doc| Rails.application.routes.url_helpers.url_for(doc) } : []
     }
   end
 

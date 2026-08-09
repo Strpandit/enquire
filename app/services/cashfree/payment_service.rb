@@ -22,7 +22,7 @@ module Cashfree
           customer_email: customer.email,
           customer_phone: customer.phone.to_s,
         },
-        return_url: ENV.fetch("CASHFREE_RETURN_URL", "https://example.com/payment-success"),
+        return_url: ENV.fetch("CASHFREE_RETURN_URL", "previewtax://payment-status?order_id=#{order_id}"),
       }
 
       headers = {
@@ -33,14 +33,15 @@ module Cashfree
       }
 
       response_body = post_request(api_url, body, headers)
-      if response_body["status"] != "OK"
-        raise Error, response_body["message"] || "Cashfree order creation failed"
+      if response_body["order_id"].blank? && response_body["payment_session_id"].blank?
+        raise Error, response_body["message"] || response_body["error_description"] || "Cashfree order creation failed"
       end
 
       {
         order_id: response_body["order_id"],
+        payment_session_id: response_body["payment_session_id"],
         payment_link: response_body.dig("payment_link", "web") || response_body["payment_link"] || response_body["payment_url"],
-        order_token: response_body["order_token"],
+        order_token: response_body["order_token"] || response_body["payment_session_id"],
       }
     end
 
@@ -79,6 +80,35 @@ module Cashfree
 
     def self.extract_account_id(order_id)
       order_id.to_s.split("_")[1].to_i
+    end
+
+    def self.get_order_status(order_id:)
+      base_url = ENV.fetch("CASHFREE_BASE", "https://sandbox.cashfree.com/pg")
+      api_url = URI.parse("#{base_url}/orders/#{order_id}")
+
+      headers = {
+        "x-api-version" => "2023-08-01",
+        "x-client-id" => ENV.fetch("CASHFREE_APP_ID"),
+        "x-client-secret" => ENV.fetch("CASHFREE_SECRET_KEY"),
+      }
+
+      request = Net::HTTP::Get.new(api_url)
+      headers.each { |k, v| request[k] = v }
+
+      http = Net::HTTP.new(api_url.host, api_url.port)
+      http.use_ssl = api_url.scheme == "https"
+      response = http.request(request)
+      body = JSON.parse(response.body) rescue {}
+
+      status = body["order_status"] || "PENDING"
+      amount_cents = ((body["order_amount"].to_f || 0) * 100).to_i
+
+      {
+        order_id: order_id,
+        order_status: status,
+        amount_cents: amount_cents,
+        raw_response: body
+      }
     end
 
     private

@@ -4,6 +4,7 @@ module Api
       def index
         call_histories = current_account.call_histories_as_caller
           .or(CallHistory.where(receiver_account_id: current_account.id))
+          .includes(caller_account: { profile_pic_attachment: :blob }, receiver_account: { profile_pic_attachment: :blob })
           .recent
           .page(params[:page])
           .per(per_page)
@@ -47,12 +48,8 @@ module Api
         duration = params.fetch(:duration_seconds, 0).to_i
         end_reason = params.fetch(:end_reason, "ended by user")
 
-        Calls::HistoryService.create_history(
-          caller: history.caller_account,
-          receiver: history.receiver_account,
-          call_type: history.call_type,
-          channel_name: history.channel_name,
-          business_profile: history.receiver_account.business_profile,
+        Calls::HistoryService.finish_call!(
+          history: history,
           duration_seconds: duration,
           end_reason: end_reason
         )

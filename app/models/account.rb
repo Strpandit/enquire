@@ -23,7 +23,19 @@ class Account < ApplicationRecord
   has_one_attached :profile_pic
   has_one_attached :pan_card
   has_one_attached :aadhaar_card
+  has_one_attached :aadhaar_card_back
   has_one_attached :passport_photo
+  has_many_attached :education_documents
+
+  def verification_expires_at
+    return nil unless verified_at.present?
+    verified_at + 28.days
+  end
+
+  def days_remaining
+    return 0 unless verification_expires_at.present?
+    [((verification_expires_at - Time.current) / 1.day).ceil, 0].max
+  end
 
   EMAIL_REGEX = URI::MailTo::EMAIL_REGEXP
   PHONE_REGEX = /\A[6-9]\d{9}\z/

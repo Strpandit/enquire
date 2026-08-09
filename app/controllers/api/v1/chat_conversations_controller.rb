@@ -4,7 +4,7 @@ module Api
       rescue_from Chat::ConversationAccess::Error, Chat::SessionService::Error, with: :render_chat_error
 
       def index
-        conversations = scope_conversations.includes(:customer_account, business_profile: :account).recent_first.page(params[:page]).per(per_page)
+        conversations = scope_conversations.includes(customer_account: { profile_pic_attachment: :blob }, business_profile: { account: { profile_pic_attachment: :blob } }).recent_first.page(params[:page]).per(per_page)
 
         render json: {
           chat_conversations: ChatConversationBlueprint.render_as_hash(

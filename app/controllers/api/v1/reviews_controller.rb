@@ -8,7 +8,7 @@ module Api
       before_action :ensure_owner!, only: [ :update, :destroy ]
 
       def index
-        reviews = @business_profile.reviews.includes(:account).order(created_at: :desc).page(params[:page]).per(per_page)
+        reviews = @business_profile.reviews.includes(account: { profile_pic_attachment: :blob }).order(created_at: :desc).page(params[:page]).per(per_page)
         render json: {
           reviews: ReviewBlueprint.render_as_hash(reviews),
           meta: pagination_meta(reviews)

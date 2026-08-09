@@ -27,6 +27,41 @@ module Api
         end
 
         head :ok
+      def verify
+        order_id = params.require(:order_id)
+        result = Cashfree::PaymentService.get_order_status(order_id: order_id)
+
+        if result[:order_status] == "PAID"
+          tx_exists = current_account.wallet_transactions.exists?(reference_type: "CashfreeOrder", reference_id: order_id)
+          unless tx_exists
+            Wallets::LedgerService.credit!(
+              account: current_account,
+              amount_cents: result[:amount_cents],
+              description: "Cashfree wallet top-up",
+              metadata: { order_id: order_id, source: "verify_endpoint" }
+            )
+          end
+
+          render json: {
+            status: "success",
+            message: "Payment verified and credited successfully!",
+            order_id: order_id,
+            amount_cents: result[:amount_cents],
+            wallet_balance_cents: current_account.reload.wallet_balance_cents
+          }, status: :ok
+        elsif result[:order_status] == "FAILED" || result[:order_status] == "USER_DROPPED" || result[:order_status] == "CANCELLED"
+          render json: {
+            status: "failed",
+            message: "Payment was not completed or was cancelled.",
+            order_id: order_id
+          }, status: :ok
+        else
+          render json: {
+            status: "pending",
+            message: "Payment verification in progress.",
+            order_id: order_id
+          }, status: :ok
+        end
       rescue StandardError => error
         render json: { errors: [error.message] }, status: :unprocessable_entity
       end

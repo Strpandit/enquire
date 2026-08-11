@@ -27,6 +27,8 @@ module Api
         end
 
         head :ok
+      end
+      
       def verify
         order_id = params.require(:order_id)
         result = Cashfree::PaymentService.get_order_status(order_id: order_id)

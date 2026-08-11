@@ -22,3 +22,8 @@ Things you may want to cover:
 * Deployment instructions
 
 * ...
+
+# npx neonctl@latest init
+# postgresql://neondb_owner:npg_4bScv6nZmKYB@ep-broad-wildflower-aznn8xt9.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require 
+
+# rails zeitwerk:check

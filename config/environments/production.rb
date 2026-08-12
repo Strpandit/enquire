@@ -74,8 +74,8 @@ Rails.application.configure do
     authentication: :plain,
     enable_starttls_auto: true,
     domain: "gmail.com",
-    open_timeout: 10,
-    read_timeout: 20
+    open_timeout: 60,
+    read_timeout: 60
   }
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to

@@ -1,5 +1,5 @@
 class AccountAuthMailer < ApplicationMailer
-  default from: "Preview Tax <chaturvedisingham007@gmail.com>"
+  default from: "Preview Tax <support@previewtax.com>"
 
   def forgot_password_otp(user)
     @user = user

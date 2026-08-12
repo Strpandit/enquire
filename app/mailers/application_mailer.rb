@@ -1,4 +1,4 @@
 class ApplicationMailer < ActionMailer::Base
-  default from: "Preview Tax <chaturvedisingham007@gmail.com>"
+  default from: "Preview Tax <support@previewtax.com>"
   layout "mailer"
 end

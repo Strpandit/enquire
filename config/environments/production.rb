@@ -65,17 +65,16 @@ Rails.application.configure do
   # Set host to be used by links generated in mailer templates.
   config.action_mailer.default_url_options = { host: ENV['MAILER_HOST'] || 'enquire-4kwv.onrender.com' }
   config.action_mailer.delivery_method = :smtp
-  # Specify outgoing SMTP server. Remember to add smtp/* credentials via rails credentials:edit.
   config.action_mailer.smtp_settings = {
-    user_name: ENV["SMTP_USERNAME"],
-    password: ENV["SMTP_PASSWORD"],
-    address: "smtp.gmail.com",
-    port: 587,
-    authentication: :plain,
-    enable_starttls_auto: true,
-    domain: "gmail.com",
-    open_timeout: 60,
-    read_timeout: 60
+    :address              => 'smtp-relay.brevo.com',
+    :port                 => 587,
+    :domain               => 'enquire-4kwv.onrender.com',
+    :user_name            => ENV['BREVO_EMAIL'],
+    :password             => ENV['BREVO_PASS'],
+    :authentication       => 'login',
+    :enable_starttls_auto => true,
+    :open_timeout         => 30,
+    :read_timeout        => 30
   }
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to

@@ -7,7 +7,6 @@ Rails.application.routes.draw do
 
   namespace :api do
     namespace :v1 do
-      get "accounts/cable", to: "accounts#cable"
       post "auth/signup", to: "auth#signup"
       post "auth/login", to: "auth#login"
       post "auth/forgot_password", to: "auth#forgot_password"

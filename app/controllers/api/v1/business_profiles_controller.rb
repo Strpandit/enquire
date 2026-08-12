@@ -11,6 +11,7 @@ module Api
       def index
         business_profiles = BusinessProfile.includes(account: { profile_pic_attachment: :blob }, categories: {}, schedules: {})
         business_profiles = business_profiles.where(approval_status: :approved)
+        business_profiles = business_profiles.where.not(account_id: @current_account.id) if @current_account.present?
         business_profiles = apply_search(business_profiles)
         business_profiles = business_profiles.order(avg_rating: :desc, created_at: :desc).page(params[:page]).per(per_page)
 

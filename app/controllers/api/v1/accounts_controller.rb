@@ -83,64 +83,6 @@ module Api
           render json: { message: "Unable to delete account" }, status: :unprocessable_entity
         end
       end
-
-      def cable
-        connection = ActiveRecord::Base.connection
-
-        cable_tables = connection.select_values(<<~SQL)
-          SELECT tablename
-          FROM pg_tables
-          WHERE schemaname = 'public'
-          AND tablename LIKE '%cable%'
-        SQL
-
-        cable_indexes = cable_tables.each_with_object({}) do |table, result|
-          result[table] = connection.indexes(table).map do |index|
-            {
-              name: index.name,
-              columns: index.columns,
-              unique: index.unique
-            }
-          end
-        end
-
-        notification_indexes = connection.indexes("notifications").map do |index|
-          {
-            name: index.name,
-            columns: index.columns,
-            unique: index.unique
-          }
-        end
-
-        broadcast_result = begin
-          ActionCable.server.broadcast(
-            "debug_test_#{current_account.id}",
-            {
-              type: "debug",
-              message: "cable test"
-            }
-          )
-
-          {
-            success: true
-          }
-        rescue StandardError => e
-          {
-            success: false,
-            error_class: e.class.name,
-            error_message: e.message,
-            backtrace: e.backtrace&.first(10)
-          }
-        end
-
-        render json: {
-          notification_primary_key: Notification.primary_key,
-          notification_indexes: notification_indexes,
-          cable_tables: cable_tables,
-          cable_indexes: cable_indexes,
-          broadcast_test: broadcast_result
-        }
-      end 
   
       private
 

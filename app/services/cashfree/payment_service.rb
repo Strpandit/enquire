@@ -10,19 +10,28 @@ module Cashfree
     def self.create_order(amount_cents:, order_id:, customer:)
       base_url = ENV.fetch("CASHFREE_BASE", "https://sandbox.cashfree.com/pg")
       api_url = URI.parse("#{base_url}/orders")
-      
+
+      phone_digits = customer.phone.to_s.gsub(/\D/, "")
+      phone_digits = "9999999999" if phone_digits.length < 10
+
+      email_str = customer.email.presence || "customer#{customer.id}@previewtax.com"
+      name_str = customer.full_name.presence || customer.username.presence || "Customer #{customer.id}"
+      return_url_template = ENV.fetch("CASHFREE_RETURN_URL", "previewtax://payment-status?order_id={order_id}")
+
       body = {
         order_id: order_id,
         order_amount: format("%.2f", amount_cents.to_f / 100.0),
         order_currency: "INR",
         order_note: "Wallet top-up for account #{customer.id}",
         customer_details: {
-          customer_id: customer.id.to_s,
-          customer_name: customer.full_name || customer.email,
-          customer_email: customer.email,
-          customer_phone: customer.phone.to_s,
+          customer_id: "cust_#{customer.id}",
+          customer_name: name_str,
+          customer_email: email_str,
+          customer_phone: phone_digits,
         },
-        return_url: ENV.fetch("CASHFREE_RETURN_URL", "previewtax://payment-status?order_id=#{order_id}"),
+        order_meta: {
+          return_url: return_url_template,
+        },
       }
 
       headers = {
@@ -37,11 +46,18 @@ module Cashfree
         raise Error, response_body["message"] || response_body["error_description"] || "Cashfree order creation failed"
       end
 
+      session_id = response_body["payment_session_id"]
+      is_sandbox = base_url.include?("sandbox")
+      web_base = is_sandbox ? "https://payments-test.cashfree.com/order/#/" : "https://payments.cashfree.com/order/#/"
+
+      direct_link = response_body.dig("payment_link", "web") || response_body["payment_link"] || response_body["payment_url"]
+      fallback_link = session_id.present? ? "#{web_base}#{session_id}" : nil
+
       {
-        order_id: response_body["order_id"],
-        payment_session_id: response_body["payment_session_id"],
-        payment_link: response_body.dig("payment_link", "web") || response_body["payment_link"] || response_body["payment_url"],
-        order_token: response_body["order_token"] || response_body["payment_session_id"],
+        order_id: response_body["order_id"] || order_id,
+        payment_session_id: session_id,
+        payment_link: direct_link.presence || fallback_link,
+        order_token: response_body["order_token"] || session_id,
       }
     end
 

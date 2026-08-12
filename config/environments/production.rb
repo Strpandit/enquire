@@ -68,13 +68,13 @@ Rails.application.configure do
   config.action_mailer.smtp_settings = {
     :address              => 'smtp-relay.brevo.com',
     :port                 => 587,
-    :domain               => 'enquire-4kwv.onrender.com',
+    :domain               => 'previewtax.com',
     :user_name            => ENV['BREVO_EMAIL'],
     :password             => ENV['BREVO_PASS'],
-    :authentication       => 'login',
+    :authentication       => 'plain',
     :enable_starttls_auto => true,
-    :open_timeout         => 30,
-    :read_timeout        => 30
+    :open_timeout         => 60,
+    :read_timeout        => 60
   }
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to

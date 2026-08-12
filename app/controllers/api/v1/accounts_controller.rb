@@ -99,27 +99,49 @@ module Api
             {
               name: index.name,
               columns: index.columns,
-              unique: index.unique,
-              primary: index.primary
+              unique: index.unique
             }
           end
         end
 
+        notification_indexes = connection.indexes("notifications").map do |index|
+          {
+            name: index.name,
+            columns: index.columns,
+            unique: index.unique
+          }
+        end
+
+        broadcast_result = begin
+          ActionCable.server.broadcast(
+            "debug_test_#{current_account.id}",
+            {
+              type: "debug",
+              message: "cable test"
+            }
+          )
+
+          {
+            success: true
+          }
+        rescue StandardError => e
+          {
+            success: false,
+            error_class: e.class.name,
+            error_message: e.message,
+            backtrace: e.backtrace&.first(10)
+          }
+        end
+
         render json: {
           notification_primary_key: Notification.primary_key,
-          notification_indexes: connection.indexes("notifications").map do |index|
-            {
-              name: index.name,
-              columns: index.columns,
-              unique: index.unique,
-              primary: index.primary
-            }
-          end,
+          notification_indexes: notification_indexes,
           cable_tables: cable_tables,
-          cable_indexes: cable_indexes
+          cable_indexes: cable_indexes,
+          broadcast_test: broadcast_result
         }
-      end
-
+      end 
+  
       private
 
       def account_params

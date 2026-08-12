@@ -84,6 +84,42 @@ module Api
         end
       end
 
+      def cable
+        connection = ActiveRecord::Base.connection
+
+        cable_tables = connection.select_values(<<~SQL)
+          SELECT tablename
+          FROM pg_tables
+          WHERE schemaname = 'public'
+          AND tablename LIKE '%cable%'
+        SQL
+
+        cable_indexes = cable_tables.each_with_object({}) do |table, result|
+          result[table] = connection.indexes(table).map do |index|
+            {
+              name: index.name,
+              columns: index.columns,
+              unique: index.unique,
+              primary: index.primary
+            }
+          end
+        end
+
+        render json: {
+          notification_primary_key: Notification.primary_key,
+          notification_indexes: connection.indexes("notifications").map do |index|
+            {
+              name: index.name,
+              columns: index.columns,
+              unique: index.unique,
+              primary: index.primary
+            }
+          end,
+          cable_tables: cable_tables,
+          cable_indexes: cable_indexes
+        }
+      end
+
       private
 
       def account_params

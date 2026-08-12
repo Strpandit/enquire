@@ -19,6 +19,9 @@ class Account < ApplicationRecord
   has_many :call_histories_as_caller, class_name: "CallHistory", foreign_key: :caller_account_id, dependent: :nullify
   has_many :call_histories_as_receiver, class_name: "CallHistory", foreign_key: :receiver_account_id, dependent: :nullify
   has_many :withdrawal_requests, dependent: :destroy
+  has_many :devices, dependent: :destroy
+  has_many :device_sessions, dependent: :destroy
+  has_many :activity_logs, dependent: :destroy
 
   has_one_attached :profile_pic
   has_one_attached :pan_card

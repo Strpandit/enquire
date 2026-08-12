@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_08_12_024012) do
+ActiveRecord::Schema[8.0].define(version: 2026_08_12_100001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -75,6 +75,20 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_12_024012) do
     t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "activity_logs", force: :cascade do |t|
+    t.bigint "account_id"
+    t.bigint "device_id"
+    t.string "event", null: false
+    t.string "title"
+    t.jsonb "metadata", default: {}
+    t.string "ip_address"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_activity_logs_on_account_id"
+    t.index ["device_id"], name: "index_activity_logs_on_device_id"
+    t.index ["event"], name: "index_activity_logs_on_event"
   end
 
   create_table "admin_users", force: :cascade do |t|
@@ -227,6 +241,43 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_12_024012) do
     t.index ["device_token"], name: "index_device_installations_on_device_token", unique: true
   end
 
+  create_table "device_sessions", force: :cascade do |t|
+    t.bigint "account_id"
+    t.bigint "device_id"
+    t.string "ip_address"
+    t.string "network_type"
+    t.datetime "login_at"
+    t.datetime "last_seen_at"
+    t.datetime "logout_at"
+    t.string "app_version"
+    t.string "android_version"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_device_sessions_on_account_id"
+    t.index ["device_id"], name: "index_device_sessions_on_device_id"
+  end
+
+  create_table "devices", force: :cascade do |t|
+    t.bigint "account_id"
+    t.string "device_uuid", null: false
+    t.string "manufacturer"
+    t.string "model"
+    t.string "android_version"
+    t.integer "android_api_level"
+    t.string "app_version", default: "1.0.0"
+    t.integer "app_build", default: 1
+    t.string "network_type"
+    t.string "last_ip"
+    t.string "push_token"
+    t.datetime "first_seen_at"
+    t.datetime "last_seen_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "device_uuid"], name: "index_devices_on_account_id_and_device_uuid", unique: true
+    t.index ["account_id"], name: "index_devices_on_account_id"
+    t.index ["device_uuid"], name: "index_devices_on_device_uuid"
+  end
+
   create_table "favorites", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "business_profile_id", null: false
@@ -326,6 +377,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_12_024012) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "activity_logs", "accounts"
+  add_foreign_key "activity_logs", "devices"
   add_foreign_key "business_profile_categories", "business_profiles"
   add_foreign_key "business_profile_categories", "categories"
   add_foreign_key "business_profiles", "accounts"
@@ -340,6 +393,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_12_024012) do
   add_foreign_key "chat_sessions", "business_profiles"
   add_foreign_key "chat_sessions", "chat_conversations"
   add_foreign_key "device_installations", "accounts"
+  add_foreign_key "device_sessions", "accounts"
+  add_foreign_key "device_sessions", "devices"
+  add_foreign_key "devices", "accounts"
   add_foreign_key "favorites", "accounts"
   add_foreign_key "favorites", "business_profiles"
   add_foreign_key "notifications", "accounts", column: "actor_account_id"

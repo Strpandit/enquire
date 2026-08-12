@@ -73,7 +73,9 @@ Rails.application.configure do
     port: 587,
     authentication: :plain,
     enable_starttls_auto: true,
-    domain: "gmail.com"
+    domain: "gmail.com",
+    open_timeout: 10,
+    read_timeout: 20
   }
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to

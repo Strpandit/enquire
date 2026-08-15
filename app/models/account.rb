@@ -70,12 +70,6 @@ class Account < ApplicationRecord
   before_validation :normalize_languages
   before_save :sync_is_verified
 
-  private
-
-  def sync_is_verified
-    self.is_verified = approved? && verified_at.present? && days_remaining > 0
-  end
-
   validates :uid, presence: true, uniqueness: true
   validates :full_name, presence: true, length: { minimum: 3, maximum: 80 }
   validates :email, presence: true, uniqueness: { case_sensitive: false }, format: { with: EMAIL_REGEX }
@@ -168,6 +162,10 @@ class Account < ApplicationRecord
   end
 
   private
+
+  def sync_is_verified
+    self.is_verified = approved? && verified_at.present? && days_remaining > 0
+  end
 
   def normalize_email
     self.email = email.to_s.strip.downcase

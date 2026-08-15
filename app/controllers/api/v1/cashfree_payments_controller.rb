@@ -30,7 +30,9 @@ module Api
       end
       
       def verify
-        order_id = params.require(:order_id)
+        order_id = params[:order_id].presence || params[:orderId].presence || params[:id].presence
+        raise ActionController::ParameterMissing, "order_id is required" if order_id.blank?
+
         result = Cashfree::PaymentService.get_order_status(order_id: order_id)
 
         if result[:order_status] == "PAID"

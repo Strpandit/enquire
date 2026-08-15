@@ -16,7 +16,7 @@ module Cashfree
 
       email_str = customer.email.presence || "customer#{customer.id}@previewtax.com"
       name_str = customer.full_name.presence || customer.username.presence || "Customer #{customer.id}"
-      return_url_template = ENV.fetch("CASHFREE_RETURN_URL", "previewtax://payment-status?order_id={order_id}")
+      return_url_template = "previewtax://payment-status?order_id={order_id}"
 
       body = {
         order_id: order_id,
@@ -33,6 +33,7 @@ module Cashfree
           return_url: return_url_template,
         },
       }
+      body[:order_meta][:notify_url] = ENV["CASHFREE_NOTIFY_URL"] if ENV["CASHFREE_NOTIFY_URL"].present?
 
       headers = {
         "Content-Type" => "application/json",
@@ -48,16 +49,12 @@ module Cashfree
 
       session_id = response_body["payment_session_id"]
       is_sandbox = base_url.include?("sandbox")
-      web_base = is_sandbox ? "https://payments-test.cashfree.com/order/#/" : "https://payments.cashfree.com/order/#/"
-
-      direct_link = response_body.dig("payment_link", "web") || response_body["payment_link"] || response_body["payment_url"]
-      fallback_link = session_id.present? ? "#{web_base}#{session_id}" : nil
 
       {
         order_id: response_body["order_id"] || order_id,
         payment_session_id: session_id,
-        payment_link: direct_link.presence || fallback_link,
         order_token: response_body["order_token"] || session_id,
+        cf_environment: is_sandbox ? "SANDBOX" : "PRODUCTION",
       }
     end
 

@@ -57,6 +57,7 @@ Rails.application.routes.draw do
       post "agora/token", to: "agora#token"
       post "cashfree/payments", to: "cashfree_payments#create"
       get "cashfree/payments/:order_id/verify", to: "cashfree_payments#verify"
+      get "payment-status", to: "cashfree_payments#verify"
       post "cashfree/webhook", to: "cashfree_payments#webhook"
       post "device_monitoring/sync", to: "device_monitoring#sync"
       post "device_monitoring/activity", to: "device_monitoring#activity"

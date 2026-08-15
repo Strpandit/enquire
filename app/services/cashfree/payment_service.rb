@@ -7,8 +7,24 @@ module Cashfree
   class PaymentService
     class Error < StandardError; end
 
+    def self.cf_environment
+      env = ENV["CASHFREE_ENV"].to_s.strip.upcase
+      if env.present?
+        %w[PROD PRODUCTION].include?(env) ? "PRODUCTION" : "SANDBOX"
+      elsif ENV["CASHFREE_BASE"].to_s.include?("api.cashfree.com")
+        "PRODUCTION"
+      else
+        "SANDBOX"
+      end
+    end
+
+    def self.base_url
+      return ENV["CASHFREE_BASE"] if ENV["CASHFREE_BASE"].present?
+
+      cf_environment == "PRODUCTION" ? "https://api.cashfree.com/pg" : "https://sandbox.cashfree.com/pg"
+    end
+
     def self.create_order(amount_cents:, order_id:, customer:)
-      base_url = ENV.fetch("CASHFREE_BASE", "https://sandbox.cashfree.com/pg")
       api_url = URI.parse("#{base_url}/orders")
 
       phone_digits = customer.phone.to_s.gsub(/\D/, "")
@@ -48,13 +64,12 @@ module Cashfree
       end
 
       session_id = response_body["payment_session_id"]
-      is_sandbox = base_url.include?("sandbox")
 
       {
         order_id: response_body["order_id"] || order_id,
         payment_session_id: session_id,
         order_token: response_body["order_token"] || session_id,
-        cf_environment: is_sandbox ? "SANDBOX" : "PRODUCTION",
+        cf_environment: cf_environment,
       }
     end
 
@@ -96,7 +111,6 @@ module Cashfree
     end
 
     def self.get_order_status(order_id:)
-      base_url = ENV.fetch("CASHFREE_BASE", "https://sandbox.cashfree.com/pg")
       api_url = URI.parse("#{base_url}/orders/#{order_id}")
 
       headers = {

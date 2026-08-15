@@ -11,7 +11,7 @@ module Api
 
       def show
         render json: {
-          account: AccountBlueprint.render_as_hash(current_account, include_business: true)
+          account: AccountBlueprint.render_as_hash(current_account, include_business: true, include_private: true, viewer: current_account)
         }, status: :ok
       end
 
@@ -20,7 +20,7 @@ module Api
 
         render json: {
           message: "Profile updated successfully",
-          account: AccountBlueprint.render_as_hash(current_account, include_business: true)
+          account: AccountBlueprint.render_as_hash(current_account, include_business: true, include_private: true, viewer: current_account)
         }, status: :ok
       end
 
@@ -48,7 +48,7 @@ module Api
 
         render json: {
           message: "Verification submitted successfully",
-          account: AccountBlueprint.render_as_hash(current_account)
+          account: AccountBlueprint.render_as_hash(current_account, include_private: true, viewer: current_account)
         }, status: :ok
       end
 

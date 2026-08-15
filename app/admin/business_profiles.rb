@@ -50,7 +50,7 @@ ActiveAdmin.register BusinessProfile do
     column(:account) { |profile| profile.account&.full_name }
     column :approval_status
     column :is_available
-    column :is_verified
+    column(:is_verified) { |profile| profile.account&.is_verified? }
     column :created_at
     actions
   end
@@ -70,7 +70,7 @@ ActiveAdmin.register BusinessProfile do
       row :call_price
       row :v_call_price
       row :is_available
-      row :is_verified
+      row(:is_verified) { |profile| profile.account&.is_verified? }
       row :gst_enabled
       row :gst_number
       row :state
@@ -78,7 +78,7 @@ ActiveAdmin.register BusinessProfile do
       row :pincode
       row :share_token
       row(:gst_certificate) do |profile|
-        profile.gst_certificate.attached? ? link_to(profile.gst_certificate.filename.to_s, url_for(profile.gst_certificate)) : "Not uploaded"
+        profile.gst_certificate.attached? ? link_to(profile.gst_certificate.filename.to_s, url_for(profile.gst_certificate), target: "_blank") : "Not uploaded"
       end
       row :created_at
       row :updated_at
@@ -107,7 +107,6 @@ ActiveAdmin.register BusinessProfile do
   filter :account_full_name, as: :string, label: "Account Name"
   filter :approval_status
   filter :is_available
-  filter :is_verified
   filter :gst_enabled
   filter :state
   filter :city

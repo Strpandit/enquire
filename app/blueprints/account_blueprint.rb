@@ -1,7 +1,11 @@
 class AccountBlueprint < Blueprinter::Base
   identifier :id
 
-  fields :uid, :full_name, :username, :email, :phone, :state, :district, :city, :pincode, :languages, :is_business, :is_verified, :verification_status, :verified_at, :verification_expires_at, :days_remaining
+  fields :uid, :full_name, :username, :email, :phone, :state, :district, :city, :pincode, :languages, :is_business, :verification_status, :verified_at, :verification_expires_at, :days_remaining
+
+  field :is_verified do |account|
+    account.is_verified?
+  end
 
   field :wallet_balance_cents do |account, options|
     (options[:include_private] || options[:viewer]&.id == account.id) ? account.wallet_balance_cents : nil
@@ -24,11 +28,12 @@ class AccountBlueprint < Blueprinter::Base
   end
 
   field :verification_rejection_reason do |account, options|
-    options[:include_private] ? account.verification_rejection_reason : nil
+    (options[:include_private] || options[:viewer]&.id == account.id) ? account.verification_rejection_reason : nil
   end
 
   field :verification_documents do |account, options|
-    next unless options[:include_private]
+    is_owner = options[:viewer] && options[:viewer].id == account.id
+    next unless options[:include_private] || is_owner || options[:include_verification_documents]
 
     {
       pan_card_url: account.pan_card.attached? ? Rails.application.routes.url_helpers.url_for(account.pan_card) : nil,

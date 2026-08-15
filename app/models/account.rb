@@ -30,6 +30,12 @@ class Account < ApplicationRecord
   has_one_attached :passport_photo
   has_many_attached :education_documents
 
+  def is_verified?
+    return true if self[:is_verified] == true
+    approved? && verified_at.present? && days_remaining > 0
+  end
+  alias_method :is_verified, :is_verified?
+
   def verification_expires_at
     return nil unless verified_at.present?
     verified_at + 28.days
@@ -62,6 +68,13 @@ class Account < ApplicationRecord
   before_validation :ensure_uid
   before_validation :normalize_username
   before_validation :normalize_languages
+  before_save :sync_is_verified
+
+  private
+
+  def sync_is_verified
+    self.is_verified = approved? && verified_at.present? && days_remaining > 0
+  end
 
   validates :uid, presence: true, uniqueness: true
   validates :full_name, presence: true, length: { minimum: 3, maximum: 80 }

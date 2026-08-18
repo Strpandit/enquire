@@ -42,7 +42,7 @@ module Api
             Wallets::LedgerService.credit!(
               account: current_account,
               amount_cents: result[:amount_cents],
-              description: "Cashfree wallet top-up",
+              description: "Wallet Top-up",
               metadata: { order_id: order_id, source: "verify_endpoint" }
             )
             ActivityLogger.log(account: current_account, event: "WALLET_TOPUP", title: "Added ₹#{result[:amount_cents]} to wallet", metadata: { order_id: order_id }, ip_address: request.remote_ip)

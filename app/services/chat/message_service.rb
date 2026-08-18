@@ -16,6 +16,36 @@ module Chat
       chat_session.reload
       raise Error, "Chat session is no longer active" unless chat_session.active?
 
+      filter_result = Chat::SecurityFilter.analyze(content)
+      if filter_result.violates_policy?
+        ActivityLogger.log(
+          account: sender,
+          event: "CHAT_MESSAGE_CONTACT_INFO_DROPPED",
+          title: "Silently dropped message attempting to share contact details",
+          metadata: {
+            conversation_id: conversation.id,
+            reasons: filter_result.reasons,
+            preview: content.to_s.truncate(100)
+          }
+        )
+
+        # Silent drop: Return a transient message object for the sender so the client
+        # appears to have succeeded, but never save, broadcast, or notify the recipient.
+        return ChatMessage.new(
+          id: (Time.current.to_f * 1000).to_i,
+          chat_conversation: conversation,
+          chat_conversation_id: conversation.id,
+          chat_session: chat_session,
+          chat_session_id: chat_session.id,
+          sender_account: sender,
+          sender_account_id: sender.id,
+          content: content,
+          sent_at: Time.current,
+          message_type: :text,
+          metadata: {}
+        )
+      end
+
       message = nil
       ActiveRecord::Base.transaction do
         message = conversation.chat_messages.create!(

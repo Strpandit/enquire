@@ -36,6 +36,7 @@ module Chat
           body: "#{actor.full_name} wants to start a paid chat with you.",
           payload: { chat_conversation_id: conversation.id, chat_session_id: session.id, business_profile_id: business_profile.id }
         )
+        ActivityLogger.log(account: actor, event: "CHAT_REQUEST_SENT", title: "Sent paid chat request to #{business_profile.business_name}")
         session
       end
     end
@@ -67,6 +68,8 @@ module Chat
         body: "#{conversation.business_profile.business_name} accepted your chat request.",
         payload: { chat_conversation_id: conversation.id, chat_session_id: chat_session.id }
       )
+      ActivityLogger.log(account: actor, event: "CHAT_REQUEST_ACCEPTED", title: "Accepted chat request from #{conversation.customer_account.full_name}")
+      ActivityLogger.log(account: conversation.customer_account, event: "CHAT_REQUEST_ACCEPTED", title: "Chat request accepted by #{conversation.business_profile.business_name}")
       chat_session
     end
 
@@ -89,6 +92,7 @@ module Chat
         body: "#{conversation.business_profile.business_name} declined your chat request.",
         payload: { chat_conversation_id: conversation.id, chat_session_id: chat_session.id }
       )
+      ActivityLogger.log(account: actor, event: "CHAT_REQUEST_DECLINED", title: "Declined chat request from #{conversation.customer_account.full_name}")
       chat_session
     end
 
@@ -116,6 +120,8 @@ module Chat
         body: "Your paid chat session has ended.",
         payload: { chat_conversation_id: conversation.id, chat_session_id: chat_session.id, reason: reason }
       )
+      other_name = actor.id == conversation.customer_account_id ? conversation.business_profile.business_name : conversation.customer_account.full_name
+      ActivityLogger.log(account: actor, event: "CHAT_SESSION_ENDED", title: "Ended chat session with #{other_name}")
       chat_session
     end
 

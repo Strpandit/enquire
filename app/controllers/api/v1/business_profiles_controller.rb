@@ -140,6 +140,7 @@ module Api
         end
 
         favorite = current_account.favorites.find_or_create_by!(business_profile: @business_profile)
+        ActivityLogger.log(account: current_account, event: "FAVORITE_ADD", title: "Added #{@business_profile.business_name} to favorites", ip_address: request.remote_ip)
         render json: { message: "Expert added to favorites" }, status: :created
       end
 
@@ -150,6 +151,7 @@ module Api
 
         favorite = current_account.favorites.find_by!(business_profile: @business_profile)
         favorite.destroy!
+        ActivityLogger.log(account: current_account, event: "FAVORITE_REMOVE", title: "Removed #{@business_profile.business_name} from favorites", ip_address: request.remote_ip)
         render json: { message: "Expert removed from favorites" }, status: :ok
       end
 

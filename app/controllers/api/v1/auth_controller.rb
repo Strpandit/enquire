@@ -9,6 +9,7 @@ module Api
       def signup
         account = Account.new(sign_up_params)
         account.save!
+        ActivityLogger.log(account: account, event: "SIGNUP", title: "Created account successfully", ip_address: request.remote_ip)
 
         render json: {
           account: JSON.parse(AccountBlueprint.render(account)),
@@ -23,6 +24,8 @@ module Api
         unless account.authenticate(login_params[:password])
           return render json: { errors: [ "Invalid email or password" ] }, status: :unauthorized
         end
+
+        ActivityLogger.log(account: account, event: "LOGIN", title: "Logged into account", ip_address: request.remote_ip)
 
         render json: {
           account: JSON.parse(AccountBlueprint.render(account)),
@@ -46,6 +49,7 @@ module Api
         if account.present?
           account.generate_password_reset_otp!
           AccountAuthMailer.forgot_password_otp(account).deliver_later
+          ActivityLogger.log(account: account, event: "FORGOT_PASSWORD_REQUEST", title: "Requested password reset OTP", ip_address: request.remote_ip)
         end
 
         render json: {
@@ -61,6 +65,7 @@ module Api
         end
 
         reset_token = account.generate_reset_password_token!
+        ActivityLogger.log(account: account, event: "OTP_VERIFIED", title: "Verified password reset OTP", ip_address: request.remote_ip)
 
         render json: {
           message: "OTP verified successfully",
@@ -92,6 +97,7 @@ module Api
         )
         account.clear_password_reset_credentials!
         AccountAuthMailer.password_reset_confirmation(account).deliver_later
+        ActivityLogger.log(account: account, event: "PASSWORD_RESET", title: "Reset account password successfully", ip_address: request.remote_ip)
 
         render json: { message: "Password reset successfully" }, status: :ok
       end

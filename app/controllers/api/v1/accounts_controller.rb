@@ -17,6 +17,7 @@ module Api
 
       def update
         current_account.update!(account_params)
+        ActivityLogger.log(account: current_account, event: "PROFILE_UPDATE", title: "Updated personal profile details", ip_address: request.remote_ip)
 
         render json: {
           message: "Profile updated successfully",
@@ -35,6 +36,8 @@ module Api
         current_account.verification_status = :pending
         current_account.verification_rejection_reason = nil
         current_account.save!
+
+        ActivityLogger.log(account: current_account, event: "VERIFICATION_SUBMIT", title: "Submitted KYC verification documents for approval", ip_address: request.remote_ip)
 
         Notifications::Creator.call(
           recipient: current_account,
@@ -55,6 +58,7 @@ module Api
       def change_password
         if current_account.authenticate(params[:current_password])
           if current_account.update(password: params[:new_password], password_confirmation: params[:confirm_password])
+            ActivityLogger.log(account: current_account, event: "PASSWORD_CHANGE", title: "Updated account security password", ip_address: request.remote_ip)
             render json: { message: "Password updated successfully", status: 200 }, status: :ok
           else
             render json: { errors: current_account.errors.full_messages }, status: :unprocessable_entity
@@ -78,6 +82,7 @@ module Api
         end
 
         if user.destroy
+          ActivityLogger.log(account: user, event: "ACCOUNT_DELETED", title: "Deleted account permanently", ip_address: request.remote_ip)
           render json: { message: "Account deleted successfully" }, status: :ok
         else
           render json: { message: "Unable to delete account" }, status: :unprocessable_entity

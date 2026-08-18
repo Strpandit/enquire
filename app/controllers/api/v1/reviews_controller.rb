@@ -17,10 +17,12 @@ module Api
 
       def create
         review = Review.find_or_initialize_by(account_id: current_account.id, business_profile_id: @business_profile.id)
+        is_new = review.new_record?
         review.assign_attributes(review_params)
         review.save!
 
-        notify_review_change(review, created: review.previous_changes.key?("id"))
+        notify_review_change(review, created: is_new)
+        ActivityLogger.log(account: current_account, event: is_new ? "REVIEW_CREATE" : "REVIEW_UPDATE", title: "#{is_new ? 'Submitted' : 'Updated'} #{review.rating}-star review for #{@business_profile.business_name}", ip_address: request.remote_ip)
 
         render json: {
           message: "Review submitted successfully",
@@ -31,6 +33,7 @@ module Api
       def update
         @review.update!(review_params)
         notify_review_change(@review, created: false)
+        ActivityLogger.log(account: current_account, event: "REVIEW_UPDATE", title: "Updated #{@review.rating}-star review for #{@review.business_profile.business_name}", ip_address: request.remote_ip)
 
         render json: {
           message: "Review updated successfully",
@@ -39,7 +42,9 @@ module Api
       end
 
       def destroy
+        biz_name = @review.business_profile.business_name
         @review.destroy!
+        ActivityLogger.log(account: current_account, event: "REVIEW_DELETE", title: "Deleted review for #{biz_name}", ip_address: request.remote_ip)
         render json: { message: "Review deleted successfully" }, status: :ok
       end
 

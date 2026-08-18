@@ -21,6 +21,7 @@ module Calls
       ActiveRecord::Base.transaction do
         history.update!(
           status: :ended,
+          call_type: normalized_type,
           duration_seconds: duration_sec,
           amount_charged_cents: amount_cents,
           ended_at: Time.current,
@@ -43,13 +44,24 @@ module Calls
           )
         end
 
+        ActivityLogger.log(
+          account: history.caller_account,
+          event: "#{normalized_type.upcase}_CALL_ENDED",
+          title: "Ended #{normalized_type == 'voice' ? 'voice call' : 'video meeting'} with #{history.receiver_account.full_name} (Duration: #{history.duration_formatted})"
+        )
+        ActivityLogger.log(
+          account: history.receiver_account,
+          event: "#{normalized_type.upcase}_CALL_ENDED",
+          title: "Completed #{normalized_type == 'voice' ? 'voice call' : 'video meeting'} with #{history.caller_account.full_name} (Duration: #{history.duration_formatted})"
+        )
+
         history
       end
     end
 
     def self.start_call(caller:, receiver:, call_type:, channel_name:)
       normalized_type = (call_type.to_s == "audio" ? "voice" : call_type.to_s)
-      CallHistory.create!(
+      call_record = CallHistory.create!(
         caller_account: caller,
         receiver_account: receiver,
         call_type: normalized_type,
@@ -57,6 +69,13 @@ module Calls
         status: :active,
         started_at: Time.current
       )
+
+      ActivityLogger.log(
+        account: caller,
+        event: "#{normalized_type.upcase}_CALL_STARTED",
+        title: "Started #{normalized_type == 'voice' ? 'voice call' : 'video meeting'} with #{receiver.full_name}"
+      )
+      call_record
     end
   end
 end

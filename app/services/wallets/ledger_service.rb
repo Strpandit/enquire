@@ -22,11 +22,25 @@ module Wallets
         description: description,
         chat_session: chat_session,
         metadata: metadata,
-        reference: reference
+        reference: reference,
+        target_wallet: :cash
       ).apply!
     end
 
-    def initialize(account:, amount_cents:, transaction_type:, description:, chat_session:, metadata:, reference:)
+    def self.credit_earnings!(account:, amount_cents:, description:, chat_session: nil, metadata: {}, reference: nil)
+      new(
+        account: account,
+        amount_cents: amount_cents,
+        transaction_type: :credit,
+        description: description,
+        chat_session: chat_session,
+        metadata: metadata,
+        reference: reference,
+        target_wallet: :earnings
+      ).apply!
+    end
+
+    def initialize(account:, amount_cents:, transaction_type:, description:, chat_session:, metadata:, reference:, target_wallet: :cash)
       @account = account
       @amount_cents = amount_cents.to_i
       @transaction_type = transaction_type.to_s
@@ -34,32 +48,49 @@ module Wallets
       @chat_session = chat_session
       @metadata = metadata
       @reference = reference
+      @target_wallet = target_wallet
     end
 
     def apply!
       raise Error, "Amount must be positive" unless amount_cents.positive?
 
       account.with_lock do
-        updated_balance = transaction_type == "debit" ? account.wallet_balance_cents - amount_cents : account.wallet_balance_cents + amount_cents
-        raise Error, "Insufficient wallet balance" if updated_balance.negative?
+        if target_wallet == :earnings
+          updated_balance = account.earnings_balance_cents + amount_cents
+          account.update!(earnings_balance_cents: updated_balance)
+          account.wallet_transactions.create!(
+            chat_session: chat_session,
+            transaction_type: "credit",
+            amount_cents: amount_cents,
+            balance_after_cents: updated_balance,
+            entry_type: "earnings",
+            reference_type: reference&.class&.name,
+            reference_id: reference&.id,
+            description: description,
+            metadata: metadata.merge(target_wallet: "earnings")
+          )
+        else
+          updated_balance = transaction_type == "debit" ? account.wallet_balance_cents - amount_cents : account.wallet_balance_cents + amount_cents
+          raise Error, "Insufficient wallet balance" if updated_balance.negative?
 
-        account.update!(wallet_balance_cents: updated_balance)
-        account.wallet_transactions.create!(
-          chat_session: chat_session,
-          transaction_type: transaction_type,
-          amount_cents: amount_cents,
-          balance_after_cents: updated_balance,
-          entry_type: chat_session.present? ? "chat" : "manual",
-          reference_type: reference&.class&.name,
-          reference_id: reference&.id,
-          description: description,
-          metadata: metadata
-        )
+          account.update!(wallet_balance_cents: updated_balance)
+          account.wallet_transactions.create!(
+            chat_session: chat_session,
+            transaction_type: transaction_type,
+            amount_cents: amount_cents,
+            balance_after_cents: updated_balance,
+            entry_type: chat_session.present? ? "chat" : "manual",
+            reference_type: reference&.class&.name,
+            reference_id: reference&.id,
+            description: description,
+            metadata: metadata
+          )
+        end
       end
     end
 
     private
 
-    attr_reader :account, :amount_cents, :transaction_type, :description, :chat_session, :metadata, :reference
+    attr_reader :account, :amount_cents, :transaction_type, :description, :chat_session, :metadata, :reference, :target_wallet
   end
 end

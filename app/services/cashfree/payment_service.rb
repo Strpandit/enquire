@@ -36,7 +36,7 @@ module Cashfree
 
       body = {
         order_id: order_id,
-        order_amount: format("%.2f", amount_cents.to_f / 100.0),
+        order_amount: format("%.2f", amount_cents.to_f),
         order_currency: "INR",
         order_note: "Wallet top-up for account #{customer.id}",
         customer_details: {
@@ -78,7 +78,7 @@ module Cashfree
       data = JSON.parse(payload)
 
       order_id = data.fetch("order_id")
-      amount_cents = (data.fetch("order_amount").to_f * 100).to_i
+      amount_cents = data.fetch("order_amount").to_f.to_i
       status = data.fetch("order_status")
       account_id = extract_account_id(order_id)
 
@@ -128,7 +128,7 @@ module Cashfree
       body = JSON.parse(response.body) rescue {}
 
       status = body["order_status"] || "PENDING"
-      amount_cents = ((body["order_amount"].to_f || 0) * 100).to_i
+      amount_cents = (body["order_amount"].to_f || 0).to_i
 
       {
         order_id: order_id,

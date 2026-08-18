@@ -13,22 +13,22 @@ class WithdrawalRequest < ApplicationRecord
   scope :active, -> { where(status: [:pending, :approved]) }
 
   def amount
-    amount_cents.to_i / 100.0
+    amount_cents.to_f
   end
 
   def deduction_amount_cents
-    (amount_cents * DEDUCTION_PERCENTAGE).round
+    0
   end
 
   def net_amount_cents
-    amount_cents - deduction_amount_cents
+    amount_cents
   end
 
   def deduction_amount
-    deduction_amount_cents / 100.0
+    0.0
   end
 
   def net_amount
-    net_amount_cents / 100.0
+    amount_cents.to_f
   end
 end

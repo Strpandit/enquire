@@ -55,6 +55,18 @@ class BusinessProfile < ApplicationRecord
     end
   end
 
+  def chat_price_cents
+    chat_price.to_i
+  end
+
+  def call_price_cents
+    call_price.to_i
+  end
+
+  def v_call_price_cents
+    v_call_price.to_i
+  end
+
   def gst_certificate_details
     attachment_details_for(gst_certificate)
   end
@@ -68,7 +80,7 @@ class BusinessProfile < ApplicationRecord
   end
 
   def chat_price_cents
-    (chat_price.to_d * 100).to_i
+    chat_price.to_i
   end
 
   private

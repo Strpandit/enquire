@@ -48,11 +48,8 @@ module Api
       private
 
       def scope_conversations
-        if current_account.business_account?
-          ChatConversation.joins(:business_profile).where(business_profiles: { account_id: current_account.id })
-        else
-          current_account.customer_chat_conversations
-        end
+        ChatConversation.joins(:business_profile)
+                        .where("chat_conversations.customer_account_id = :id OR business_profiles.account_id = :id", id: current_account.id)
       end
 
       def find_conversation

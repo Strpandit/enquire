@@ -46,6 +46,9 @@ module Chat
       billed_through = from_time + (chargeable_minutes * 60)
 
       ActiveRecord::Base.transaction do
+        platform_fee_cents = chargeable_cents - (chargeable_cents * 0.8).to_i
+        expert_earning_cents = chargeable_cents - platform_fee_cents
+
         Wallets::LedgerService.debit!(
           account: customer,
           amount_cents: chargeable_cents,
@@ -54,12 +57,12 @@ module Chat
           metadata: { billed_minutes: chargeable_minutes, billing_mode: "started_minute" },
           reference: chat_session
         )
-        Wallets::LedgerService.credit!(
+        Wallets::LedgerService.credit_earnings!(
           account: business_owner,
-          amount_cents: chargeable_cents,
-          description: "Chat earning for session ##{chat_session.id}",
+          amount_cents: expert_earning_cents,
+          description: "Chat earning for session ##{chat_session.id} (after 20% platform fee)",
           chat_session: chat_session,
-          metadata: { billed_minutes: chargeable_minutes, billing_mode: "started_minute" },
+          metadata: { billed_minutes: chargeable_minutes, billing_mode: "started_minute", platform_fee_cents: platform_fee_cents, platform_fee_percent: 20 },
           reference: chat_session
         )
 

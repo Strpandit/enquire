@@ -26,7 +26,7 @@ module Api
             status: :pending
           )
           current_account.update!(earnings_balance_cents: current_account.earnings_balance_cents - amount_cents)
-          ActivityLogger.log(account: current_account, event: "WITHDRAWAL_REQUEST", title: "Requested UPI payout of ₹#{(amount_cents / 100.0).round(2)} to #{upi_id}", metadata: { withdrawal_id: withdrawal.id, upi_id: upi_id }, ip_address: request.remote_ip)
+          ActivityLogger.log(account: current_account, event: "WITHDRAWAL_REQUEST", title: "Requested UPI payout of ₹#{amount_cents} to #{upi_id}", metadata: { withdrawal_id: withdrawal.id, upi_id: upi_id }, ip_address: request.remote_ip)
         end
 
         render json: {
@@ -45,7 +45,7 @@ module Api
         ActiveRecord::Base.transaction do
           withdrawal.update!(status: :rejected, failure_reason: "Cancelled by user")
           current_account.update!(earnings_balance_cents: current_account.earnings_balance_cents + withdrawal.amount_cents)
-          ActivityLogger.log(account: current_account, event: "WITHDRAWAL_CANCEL", title: "Cancelled UPI payout request of ₹#{(withdrawal.amount_cents / 100.0).round(2)}", metadata: { withdrawal_id: withdrawal.id }, ip_address: request.remote_ip)
+          ActivityLogger.log(account: current_account, event: "WITHDRAWAL_CANCEL", title: "Cancelled UPI payout request of ₹#{withdrawal.amount_cents}", metadata: { withdrawal_id: withdrawal.id }, ip_address: request.remote_ip)
         end
 
         render json: {

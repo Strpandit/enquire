@@ -24,7 +24,7 @@ module Api
 
         if (account_id = event[:account_id]) && (account = Account.find_by(id: account_id))
           Wallets::LedgerService.credit!(account: account, amount_cents: event[:amount_cents], description: "Cashfree wallet top-up", metadata: event.except(:amount_cents, :account_id))
-          ActivityLogger.log(account: account, event: "WALLET_TOPUP", title: "Added ₹#{(event[:amount_cents] / 100.0).round(2)} to wallet via Cashfree", metadata: { order_id: event[:order_id] })
+          ActivityLogger.log(account: account, event: "WALLET_TOPUP", title: "Added ₹#{event[:amount_cents]} to wallet", metadata: { order_id: event[:order_id] })
         end
 
         head :ok
@@ -45,7 +45,7 @@ module Api
               description: "Cashfree wallet top-up",
               metadata: { order_id: order_id, source: "verify_endpoint" }
             )
-            ActivityLogger.log(account: current_account, event: "WALLET_TOPUP", title: "Added ₹#{(result[:amount_cents] / 100.0).round(2)} to wallet via Cashfree", metadata: { order_id: order_id }, ip_address: request.remote_ip)
+            ActivityLogger.log(account: current_account, event: "WALLET_TOPUP", title: "Added ₹#{result[:amount_cents]} to wallet", metadata: { order_id: order_id }, ip_address: request.remote_ip)
           end
 
           render json: {

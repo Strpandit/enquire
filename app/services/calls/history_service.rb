@@ -3,8 +3,8 @@ module Calls
     class Error < StandardError; end
 
     def self.finish_call!(history:, duration_seconds: 0, end_reason: nil)
-      normalized_type = (history.call_type.to_s == "audio" ? "voice" : history.call_type.to_s)
-      business_profile = history.receiver_account&.business_profile
+      normalized_type = (history.video? ? "video" : "voice")
+      business_profile = BusinessProfile.find_by(account_id: history.receiver_account_id) || BusinessProfile.find_by(account_id: history.caller_account_id)
 
       rate_per_minute_cents = if business_profile && normalized_type == "voice"
                                 business_profile.call_price_cents
@@ -29,18 +29,23 @@ module Calls
         )
 
         if amount_cents > 0
+          customer_acc = (history.caller_account_id == business_profile.account_id) ? history.receiver_account : history.caller_account
+          expert_acc = business_profile.account
+          platform_fee_cents = amount_cents - (amount_cents * 0.8).to_i
+          expert_earning_cents = amount_cents - platform_fee_cents
+
           Wallets::LedgerService.debit!(
-            account: history.caller_account,
+            account: customer_acc,
             amount_cents: amount_cents,
-            description: "#{normalized_type.capitalize} call charge with #{history.receiver_account.full_name}",
+            description: "#{normalized_type.capitalize} call charge with #{expert_acc.full_name}",
             metadata: { call_history_id: history.id, duration_seconds: duration_sec, billed_minutes: billed_minutes }
           )
 
-          Wallets::LedgerService.credit!(
-            account: history.receiver_account,
-            amount_cents: (amount_cents * 0.8).to_i,
-            description: "Earnings from #{normalized_type} call with #{history.caller_account.full_name}",
-            metadata: { call_history_id: history.id, earning_type: "call", duration_seconds: duration_sec, billed_minutes: billed_minutes }
+          Wallets::LedgerService.credit_earnings!(
+            account: expert_acc,
+            amount_cents: expert_earning_cents,
+            description: "Earnings from #{normalized_type} call with #{customer_acc.full_name} (after 20% platform fee)",
+            metadata: { call_history_id: history.id, earning_type: "call", duration_seconds: duration_sec, billed_minutes: billed_minutes, platform_fee_cents: platform_fee_cents, platform_fee_percent: 20 }
           )
         end
 

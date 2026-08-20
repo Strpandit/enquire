@@ -44,7 +44,6 @@ ActiveAdmin.register WithdrawalRequest do
         failure_reason: "Rejected by admin"
       )
 
-      # Refund earnings balance to expert
       resource.account.update!(
         earnings_balance_cents: resource.account.earnings_balance_cents + resource.amount_cents
       )

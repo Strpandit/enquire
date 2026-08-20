@@ -46,7 +46,10 @@ Rails.application.routes.draw do
       end
       resources :call_histories, only: [ :index, :create ] do
         member do
+          post :accept
+          post :decline
           post :end_call
+          post :heartbeat
         end
       end
       resources :withdrawal_requests, only: [ :index, :create ] do

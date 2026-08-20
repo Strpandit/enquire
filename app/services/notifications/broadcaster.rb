@@ -25,6 +25,9 @@ module Notifications
     def self.channel_for(account_id)
       "notifications_#{account_id}"
     end
-    
+
+    def self.broadcast_payload(account_id, payload)
+      ActionCable.server.broadcast("notifications_#{account_id}", payload)
+    end
   end
 end

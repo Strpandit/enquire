@@ -1,5 +1,5 @@
 class ChatSession < ApplicationRecord
-  REQUEST_TIMEOUT = 2.minutes
+  REQUEST_TIMEOUT = 5.minutes
 
   belongs_to :chat_conversation
   belongs_to :customer_account, class_name: "Account"

@@ -72,10 +72,10 @@ module Chat
         actor: sender,
         notifiable: conversation,
         notification_type: "chat_message_received",
-        title: "New message",
-        body: "#{sender.full_name}: #{message.content.truncate(80)}",
+        title: "New message from #{sender.full_name}",
+        body: message.content.truncate(80),
         payload: { chat_conversation_id: conversation.id, chat_session_id: chat_session.id, last_chat_message_id: message.id },
-        push: !recipient_account.online?,
+        push: true,
         collapse: true
       )
       ActivityLogger.log(account: sender, event: "CHAT_MESSAGE_SENT", title: "Sent message to #{recipient_account.full_name}")

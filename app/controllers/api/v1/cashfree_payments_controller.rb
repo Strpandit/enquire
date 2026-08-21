@@ -23,7 +23,7 @@ module Api
         return head :ok unless event[:status] == "PAID"
 
         if (account_id = event[:account_id]) && (account = Account.find_by(id: account_id))
-          Wallets::LedgerService.credit!(account: account, amount_cents: event[:amount_cents], description: "Cashfree wallet top-up", metadata: event.except(:amount_cents, :account_id))
+          Wallets::LedgerService.credit!(account: account, amount_cents: event[:amount_cents], description: "Wallet Top-Up", metadata: event.except(:amount_cents, :account_id))
           ActivityLogger.log(account: account, event: "WALLET_TOPUP", title: "Added ₹#{event[:amount_cents]} to wallet", metadata: { order_id: event[:order_id] })
         end
 

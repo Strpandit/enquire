@@ -228,14 +228,14 @@ module Calls
       Wallets::LedgerService.debit!(
         account: customer,
         amount_cents: amount_cents,
-        description: "#{history.call_type.capitalize} call charge for #{minutes} min(s)",
+        description: "#{history.call_type.to_s.capitalize} call charge",
         metadata: { call_history_id: history.id, billed_minutes: minutes }
       )
 
       Wallets::LedgerService.credit_earnings!(
         account: expert,
         amount_cents: expert_earning_cents,
-        description: "Earnings from #{history.call_type} call for #{minutes} min(s) (after 20% platform fee)",
+        description: "#{history.call_type.to_s.capitalize} call earnings",
         metadata: { call_history_id: history.id, earning_type: "call", billed_minutes: minutes, platform_fee_cents: platform_fee_cents, platform_fee_percent: 20 }
       )
 

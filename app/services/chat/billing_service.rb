@@ -52,7 +52,7 @@ module Chat
         Wallets::LedgerService.debit!(
           account: customer,
           amount_cents: chargeable_cents,
-          description: "Chat charge for session ##{chat_session.id}",
+          description: "Chat consultation fee",
           chat_session: chat_session,
           metadata: { billed_minutes: chargeable_minutes, billing_mode: "started_minute" },
           reference: chat_session
@@ -60,7 +60,7 @@ module Chat
         Wallets::LedgerService.credit_earnings!(
           account: business_owner,
           amount_cents: expert_earning_cents,
-          description: "Chat earning for session ##{chat_session.id} (after 20% platform fee)",
+          description: "Chat consultation earnings",
           chat_session: chat_session,
           metadata: { billed_minutes: chargeable_minutes, billing_mode: "started_minute", platform_fee_cents: platform_fee_cents, platform_fee_percent: 20 },
           reference: chat_session

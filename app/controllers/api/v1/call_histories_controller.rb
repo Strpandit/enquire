@@ -23,9 +23,6 @@ module Api
         receiver = Account.find(receiver_id)
         raise ActionController::ParameterMissing, "Invalid receiver account" unless receiver
 
-        business_profile = receiver.business_profile
-        raise ActionController::ParameterMissing, "Receiver does not have a business profile" unless business_profile
-
         history = Calls::HistoryService.initiate_call(
           caller: current_account,
           receiver: receiver,

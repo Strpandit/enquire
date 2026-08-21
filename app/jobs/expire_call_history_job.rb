@@ -24,6 +24,21 @@ class ExpireCallHistoryJob < ApplicationJob
         }
       )
 
+      # Also notify the caller that their call was not answered
+      Notifications::Creator.call(
+        recipient: history.caller_account,
+        actor: history.receiver_account,
+        notifiable: history,
+        notification_type: "call_not_answered",
+        title: "Call Not Answered",
+        body: "#{history.receiver_account.full_name} did not answer your #{history.voice? ? 'voice' : 'video'} call.",
+        payload: {
+          call_history_id: history.id,
+          call_type: history.call_type,
+          event: "call_not_answered"
+        }
+      )
+
       Notifications::Broadcaster.broadcast_payload(
         history.receiver_account_id,
         {

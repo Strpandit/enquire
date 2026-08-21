@@ -23,6 +23,10 @@ class ChatConversationBlueprint < Blueprinter::Base
       business_name: profile.business_name,
       account_id: profile.account_id,
       account_uid: owner.uid,
+      # Include the owner's full_name so the chat screen can show the real name
+      # (not just business_name) and the verified badge
+      full_name: owner.full_name,
+      is_verified: owner.is_verified?,
       chat_price: profile.chat_price,
       is_available: profile.currently_available?,
       online: owner.online?,

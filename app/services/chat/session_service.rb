@@ -65,7 +65,7 @@ module Chat
         notifiable: chat_session,
         notification_type: "chat_request_accepted",
         title: "Chat request accepted",
-        body: "#{conversation.business_profile.business_name} accepted your chat request.",
+        body: "#{actor.full_name} accepted your chat request. You can now start chatting.",
         payload: { chat_conversation_id: conversation.id, chat_session_id: chat_session.id }
       )
       ActivityLogger.log(account: actor, event: "CHAT_REQUEST_ACCEPTED", title: "Accepted chat request from #{conversation.customer_account.full_name}")

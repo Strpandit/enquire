@@ -183,22 +183,24 @@ module Calls
       normalized_type = (history.video? ? "video" : "voice")
       business_profile = BusinessProfile.find_by(account_id: history.receiver_account_id) || BusinessProfile.find_by(account_id: history.caller_account_id)
 
-      duration_sec = duration_seconds.to_i
+      status_to_set = (history.initiated? && ["no_answer", "unanswered"].include?(end_reason.to_s)) ? :missed : :ended
       history.update!(
-        status: :ended,
+        status: status_to_set,
         duration_seconds: duration_sec,
         ended_at: Time.current,
         end_reason: end_reason || "ended_by_user"
       )
 
-      Notifications::Broadcaster.broadcast_payload(
-        history.caller_account_id == history.receiver_account_id ? history.caller_account_id : history.receiver_account_id,
-        {
-          type: "call_history",
-          event: "call_ended",
-          call: CallHistoryBlueprint.render_as_hash(history)
-        }
-      )
+      [history.caller_account_id, history.receiver_account_id].compact.uniq.each do |target_acc_id|
+        Notifications::Broadcaster.broadcast_payload(
+          target_acc_id,
+          {
+            type: "call_history",
+            event: "call_ended",
+            call: CallHistoryBlueprint.render_as_hash(history)
+          }
+        )
+      end
 
       ActivityLogger.log(
         account: history.caller_account,

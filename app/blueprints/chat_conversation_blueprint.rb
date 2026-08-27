@@ -11,7 +11,8 @@ class ChatConversationBlueprint < Blueprinter::Base
       full_name: customer.full_name,
       username: customer.username,
       online: customer.online?,
-      last_seen_at: customer.last_seen_at
+      last_seen_at: customer.last_seen_at,
+      profile_pic_url: customer.profile_pic.attached? ? Rails.application.routes.url_helpers.url_for(customer.profile_pic) : nil
     }
   end
 
@@ -23,14 +24,13 @@ class ChatConversationBlueprint < Blueprinter::Base
       business_name: profile.business_name,
       account_id: profile.account_id,
       account_uid: owner.uid,
-      # Include the owner's full_name so the chat screen can show the real name
-      # (not just business_name) and the verified badge
       full_name: owner.full_name,
       is_verified: owner.is_verified?,
       chat_price: profile.chat_price,
       is_available: profile.currently_available?,
       online: owner.online?,
-      last_seen_at: owner.last_seen_at
+      last_seen_at: owner.last_seen_at,
+      profile_pic_url: owner.profile_pic.attached? ? Rails.application.routes.url_helpers.url_for(owner.profile_pic) : nil
     }
   end
 

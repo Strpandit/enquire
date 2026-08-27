@@ -2,8 +2,8 @@ module Api
   module V1
     class CallHistoriesController < BaseController
       def index
-        call_histories = current_account.call_histories_as_caller
-          .or(CallHistory.where(receiver_account_id: current_account.id))
+        call_histories = CallHistory
+          .for_account(current_account.id)
           .includes(caller_account: { profile_pic_attachment: :blob }, receiver_account: { profile_pic_attachment: :blob })
           .recent
           .page(params[:page])

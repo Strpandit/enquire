@@ -102,9 +102,13 @@ module Calls
         {
           type: "call_history",
           event: "call_accepted",
+          call_history_id: history.id,
           call: CallHistoryBlueprint.render_as_hash(history)
         }
       )
+
+      # Mark incoming call notification as read on accept
+      Notification.where(notifiable: history).update_all(read_at: Time.current)
 
       history
     end
@@ -114,14 +118,20 @@ module Calls
 
       history.update!(status: :declined, ended_at: Time.current, end_reason: "declined_by_receiver")
 
-      Notifications::Broadcaster.broadcast_payload(
-        history.caller_account_id,
-        {
-          type: "call_history",
-          event: "call_declined",
-          call: CallHistoryBlueprint.render_as_hash(history)
-        }
-      )
+      # Mark any incoming_call notifications as read
+      Notification.where(notifiable: history).update_all(read_at: Time.current)
+
+      [history.caller_account_id, history.receiver_account_id].compact.uniq.each do |target_acc_id|
+        Notifications::Broadcaster.broadcast_payload(
+          target_acc_id,
+          {
+            type: "call_history",
+            event: "call_declined",
+            call_history_id: history.id,
+            call: CallHistoryBlueprint.render_as_hash(history)
+          }
+        )
+      end
 
       Notifications::Creator.call(
         recipient: history.caller_account,
@@ -180,6 +190,7 @@ module Calls
     def self.finish_call!(history:, duration_seconds: 0, end_reason: nil)
       return history if history.ended?
 
+      duration_sec = duration_seconds.to_i
       normalized_type = (history.video? ? "video" : "voice")
       business_profile = BusinessProfile.find_by(account_id: history.receiver_account_id) || BusinessProfile.find_by(account_id: history.caller_account_id)
 
@@ -191,12 +202,16 @@ module Calls
         end_reason: end_reason || "ended_by_user"
       )
 
+      # Mark any incoming_call notifications as read
+      Notification.where(notifiable: history).update_all(read_at: Time.current)
+
       [history.caller_account_id, history.receiver_account_id].compact.uniq.each do |target_acc_id|
         Notifications::Broadcaster.broadcast_payload(
           target_acc_id,
           {
             type: "call_history",
             event: "call_ended",
+            call_history_id: history.id,
             call: CallHistoryBlueprint.render_as_hash(history)
           }
         )

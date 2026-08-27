@@ -9,6 +9,9 @@ class ExpireCallHistoryJob < ApplicationJob
     ActiveRecord::Base.transaction do
       history.update!(status: :missed, ended_at: Time.current, end_reason: "no_answer")
 
+      # Mark any previous incoming_call notifications as read
+      Notification.where(notifiable: history).update_all(read_at: Time.current)
+
       Notifications::Creator.call(
         recipient: history.receiver_account,
         actor: history.caller_account,

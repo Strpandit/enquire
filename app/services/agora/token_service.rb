@@ -1,6 +1,7 @@
 require "openssl"
 require "securerandom"
 require "base64"
+require "zlib"
 
 module Agora
   class TokenService
@@ -35,6 +36,10 @@ module Agora
     end
   end
 
+  # Implements Agora's "006" AccessToken binary format. Field order and
+  # endianness must match the official SDKs exactly (all integers are
+  # little-endian; app_id/channel_name/uid are signed as raw bytes, NOT
+  # length-prefixed) or the Agora servers will reject the token as invalid.
   class AccessToken
     VERSION = "006".freeze
 
@@ -55,30 +60,40 @@ module Agora
     end
 
     def build
-      content = pack_string(app_id) + pack_string(channel_name) + pack_string(uid) + pack_uint32(salt) + pack_uint32(ts) + pack_map(messages)
-      signature = OpenSSL::HMAC.digest("sha256", app_certificate, content)
-      token_struct = [signature.bytesize].pack("N") + signature + content
-      "#{VERSION}#{Base64.strict_encode64(token_struct)}"
+      message = pack_uint32(salt) + pack_uint32(ts) + pack_map(messages)
+
+      to_sign = app_id.to_s.b + channel_name.b + uid.b + message
+      signature = OpenSSL::HMAC.digest("sha256", app_certificate, to_sign)
+
+      crc_channel = Zlib.crc32(channel_name)
+      crc_uid = Zlib.crc32(uid)
+
+      content = pack_bytes(signature) + pack_uint32(crc_channel) + pack_uint32(crc_uid) + pack_bytes(message)
+
+      "#{VERSION}#{app_id}#{Base64.strict_encode64(content)}"
     end
 
     private
 
+    # All integers are little-endian per the Agora "006" token spec.
     def pack_uint16(value)
-      [value].pack("n")
+      [value].pack("v")
     end
 
     def pack_uint32(value)
-      [value].pack("N")
+      [value].pack("V")
     end
 
-    def pack_string(value)
-      string = value.to_s
-      pack_uint16(string.bytesize) + string
+    def pack_bytes(bytes)
+      pack_uint16(bytes.bytesize) + bytes
     end
 
     def pack_map(map)
-      packed = pack_uint16(map.size)
-      map.each do |key, value|
+      # Privileges must be written in ascending key order (Java's TreeMap
+      # semantics in the reference implementation).
+      sorted = map.sort_by { |key, _| key }
+      packed = pack_uint16(sorted.size)
+      sorted.each do |key, value|
         packed << pack_uint16(key)
         packed << pack_uint32(value)
       end

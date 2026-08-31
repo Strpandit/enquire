@@ -5,23 +5,23 @@ class Account < ApplicationRecord
   OTP_EXPIRY_WINDOW = 5.minutes
   PASSWORD_RESET_TOKEN_WINDOW = 15.minutes
 
-  has_one :business_profile, dependent: :destroy
-  has_many :reviews, dependent: :destroy
-  has_many :favorites, dependent: :destroy
+  has_one :business_profile
+  has_many :reviews
+  has_many :favorites
   has_many :favorite_business_profiles, through: :favorites, source: :business_profile
-  has_many :received_notifications, class_name: "Notification", foreign_key: :recipient_account_id, dependent: :destroy
-  has_many :sent_notifications, class_name: "Notification", foreign_key: :actor_account_id, dependent: :nullify
-  has_many :device_installations, dependent: :destroy
-  has_many :customer_chat_conversations, class_name: "ChatConversation", foreign_key: :customer_account_id, dependent: :destroy
-  has_many :sent_chat_messages, class_name: "ChatMessage", foreign_key: :sender_account_id, dependent: :nullify
-  has_many :wallet_transactions, dependent: :destroy
-  has_many :customer_chat_sessions, class_name: "ChatSession", foreign_key: :customer_account_id, dependent: :nullify
-  has_many :call_histories_as_caller, class_name: "CallHistory", foreign_key: :caller_account_id, dependent: :nullify
-  has_many :call_histories_as_receiver, class_name: "CallHistory", foreign_key: :receiver_account_id, dependent: :nullify
-  has_many :withdrawal_requests, dependent: :destroy
-  has_many :devices, dependent: :destroy
-  has_many :device_sessions, dependent: :destroy
-  has_many :activity_logs, dependent: :destroy
+  has_many :received_notifications, class_name: "Notification", foreign_key: :recipient_account_id
+  has_many :sent_notifications, class_name: "Notification", foreign_key: :actor_account_id
+  has_many :device_installations
+  has_many :customer_chat_conversations, class_name: "ChatConversation", foreign_key: :customer_account_id
+  has_many :sent_chat_messages, class_name: "ChatMessage", foreign_key: :sender_account_id
+  has_many :wallet_transactions
+  has_many :customer_chat_sessions, class_name: "ChatSession", foreign_key: :customer_account_id
+  has_many :call_histories_as_caller, class_name: "CallHistory", foreign_key: :caller_account_id
+  has_many :call_histories_as_receiver, class_name: "CallHistory", foreign_key: :receiver_account_id
+  has_many :withdrawal_requests
+  has_many :devices
+  has_many :device_sessions
+  has_many :activity_logs
 
   has_one_attached :profile_pic
   has_one_attached :pan_card
@@ -77,7 +77,8 @@ class Account < ApplicationRecord
   validates :username, uniqueness: { case_sensitive: false }, format: { with: USERNAME_REGEX, message: "can only contain letters, numbers, and underscores" }, length: { minimum: 3, maximum: 30 }, if: :username?
   validates :password, length: { minimum: 8 }, if: :password_required?
   validates :pincode, format: { with: PINCODE_REGEX, message: "must be 6 digits" }, allow_blank: true
-  validates :wallet_balance_cents, numericality: { greater_than_or_equal_to: 0, only_integer: true }
+  validates :wallet_balance, numericality: { greater_than_or_equal_to: 0, only_integer: true }
+  validates :earnings_balance, numericality: { greater_than_or_equal_to: 0, only_integer: true }
   validate :phone_required_for_verification_submission
   validate :verification_documents_complete_for_submission
   validate :validate_profile_pic_attachment
@@ -139,10 +140,6 @@ class Account < ApplicationRecord
       reset_password_token_digest: nil,
       reset_password_sent_at: nil
     )
-  end
-
-  def wallet_balance
-    wallet_balance_cents.to_i / 100.0
   end
 
   def business_account?

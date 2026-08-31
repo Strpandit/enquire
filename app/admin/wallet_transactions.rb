@@ -5,8 +5,8 @@ ActiveAdmin.register WalletTransaction do
     id_column
     column(:account) { |tx| tx.account&.full_name }
     column :entry_type
-    column("Amount") { |tx| "₹#{tx.amount_cents / 100.0}" }
-    column("Balance After") { |tx| "₹#{tx.balance_after_cents / 100.0}" }
+    column("Amount") { |tx| "₹#{tx.amount}" }
+    column("Balance After") { |tx| "₹#{tx.balance_after}" }
     column :description
     column :created_at
     actions
@@ -17,8 +17,8 @@ ActiveAdmin.register WalletTransaction do
       row :id
       row(:account) { |tx| tx.account&.full_name }
       row :entry_type
-      row("Amount") { |tx| "₹#{tx.amount_cents / 100.0}" }
-      row("Balance After Transaction") { |tx| "₹#{tx.balance_after_cents / 100.0}" }
+      row("Amount") { |tx| "₹#{tx.amount}" }
+      row("Balance After Transaction") { |tx| "₹#{tx.balance_after}" }
       row :description
       row :reference_type
       row :reference_id

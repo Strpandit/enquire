@@ -25,6 +25,16 @@ module Api
         }, status: :ok
       end
 
+      def destroy
+        notification = current_account.received_notifications.find(params[:id])
+        notification.destroy!
+
+        render json: {
+          message: "Notification deleted",
+          unread_count: current_account.unread_notifications_count
+        }, status: :ok
+      end
+
       def mark_all_read
         unread_scope = current_account.received_notifications.unread
         now = Time.current

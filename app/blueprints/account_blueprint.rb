@@ -1,18 +1,18 @@
 class AccountBlueprint < Blueprinter::Base
   identifier :id
 
-  fields :uid, :full_name, :username, :email, :phone, :state, :district, :city, :pincode, :languages, :is_business, :verification_status, :verified_at, :verification_expires_at, :days_remaining
+  fields :uid, :full_name, :username, :languages, :email, :phone, :state, :district, :city, :pincode, :is_business, :verification_status, :verified_at, :verification_expires_at, :days_remaining
 
   field :is_verified do |account|
     account.is_verified?
   end
 
-  field :wallet_balance_cents do |account, options|
-    (options[:include_private] || options[:viewer]&.id == account.id) ? account.wallet_balance_cents : nil
+  field :wallet_balance do |account, options|
+    (options[:include_private] || options[:viewer]&.id == account.id) ? account.wallet_balance : nil
   end
 
-  field :earnings_balance_cents do |account, options|
-    (options[:include_private] || options[:viewer]&.id == account.id) ? account.earnings_balance_cents : nil
+  field :earnings_balance do |account, options|
+    (options[:include_private] || options[:viewer]&.id == account.id) ? account.earnings_balance : nil
   end
 
   field :profile_pic_url do |account|

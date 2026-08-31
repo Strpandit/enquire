@@ -1,11 +1,7 @@
 class WithdrawalRequestBlueprint < Blueprinter::Base
   identifier :id
 
-  fields :amount_cents, :upi_id, :status, :approved_at, :completed_at, :failure_reason, :created_at, :updated_at
-
-  field :amount do |req|
-    req.amount
-  end
+  fields :amount, :upi_id, :status, :approved_at, :completed_at, :failure_reason, :created_at, :updated_at
 
   field :deduction_amount do |req|
     req.deduction_amount

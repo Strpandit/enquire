@@ -3,8 +3,8 @@ class WithdrawalRequest < ApplicationRecord
 
   enum :status, { pending: 0, approved: 1, completed: 2, rejected: 3 }
 
-  validates :account_id, :amount_cents, :upi_id, presence: true
-  validates :amount_cents, numericality: { greater_than: 0, only_integer: true }
+  validates :account_id, :amount, :upi_id, presence: true
+  validates :amount, numericality: { greater_than: 0, only_integer: true }
   validates :upi_id, format: { with: /\A[a-zA-Z0-9._-]+@[a-zA-Z0-9]+\z/, message: "format must be valid (example@bank)" }
 
   DEDUCTION_PERCENTAGE = 0.20
@@ -12,23 +12,11 @@ class WithdrawalRequest < ApplicationRecord
   scope :recent, -> { order(created_at: :desc) }
   scope :active, -> { where(status: [:pending, :approved]) }
 
-  def amount
-    amount_cents.to_f
-  end
-
-  def deduction_amount_cents
-    0
-  end
-
-  def net_amount_cents
-    amount_cents
-  end
-
   def deduction_amount
-    0.0
+    (amount * DEDUCTION_PERCENTAGE).round
   end
 
   def net_amount
-    amount_cents.to_f
+    amount - deduction_amount
   end
 end

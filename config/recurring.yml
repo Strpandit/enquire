@@ -5,3 +5,6 @@ production:
   sync_active_chat_sessions:
     class: SyncActiveChatSessionsJob
     schedule: every minute
+  sync_active_calls:
+    class: SyncActiveCallsJob
+    schedule: every 30 seconds

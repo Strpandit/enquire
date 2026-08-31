@@ -37,17 +37,29 @@ module Api
       end
 
       def bulk_create
-        schedules = params[:schedules].map do |slot|
-          current_business_profile.schedules.create!(
-            day_of_week: slot[:day],
-            start_time: slot[:start_time],
-            end_time: slot[:end_time],
-            availability_type: "custom"
-          )
+        mode = params[:availability_type].presence || "custom"
+        slots = params[:schedules] || []
+
+        ActiveRecord::Base.transaction do
+          current_business_profile.schedules.destroy_all
+
+          case mode
+          when "always"
+            current_business_profile.schedules.create!(availability_type: "always")
+          when "custom"
+            slots.each do |slot|
+              current_business_profile.schedules.create!(
+                day_of_week: slot[:day_of_week] || slot[:day],
+                start_time: slot[:start_time],
+                end_time: slot[:end_time],
+                availability_type: "custom"
+              )
+            end
+          end
         end
 
         render json: {
-          schedules: ScheduleBlueprint.render_as_hash(schedules)
+          schedules: ScheduleBlueprint.render_as_hash(current_business_profile.schedules.reload)
         }, status: :created
       end
 

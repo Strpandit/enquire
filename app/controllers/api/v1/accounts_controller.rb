@@ -1,14 +1,6 @@
 module Api
   module V1
     class AccountsController < BaseController
-      def index
-        accounts = Account.order(created_at: :desc).page(params[:page]).per(per_page)
-        render json: {
-          accounts: AccountBlueprint.render_as_hash(accounts),
-          meta: pagination_meta(accounts)
-        }, status: :ok
-      end
-
       def show
         render json: {
           account: AccountBlueprint.render_as_hash(current_account, include_business: true, include_private: true, viewer: current_account)
@@ -69,9 +61,7 @@ module Api
       end
 
       def destroy
-        user = Account.with_deleted.find_by(id: params[:id])
-
-        return render json: { message: "Account not found" }, status: :not_found unless user
+        user = current_account
 
         unless params[:password].present?
           return render json: { message: "Password is required" }, status: :unprocessable_entity

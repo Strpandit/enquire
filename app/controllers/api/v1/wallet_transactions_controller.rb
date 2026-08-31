@@ -4,8 +4,8 @@ module Api
       def index
         transactions = current_account.wallet_transactions.order(created_at: :desc).page(params[:page]).per(per_page)
         render json: {
-          wallet_balance_cents: current_account.wallet_balance_cents,
-          earnings_balance_cents: current_account.earnings_balance_cents,
+          wallet_balance: current_account.wallet_balance,
+          earnings_balance: current_account.earnings_balance,
           wallet_transactions: WalletTransactionBlueprint.render_as_hash(transactions),
           meta: pagination_meta(transactions)
         }, status: :ok

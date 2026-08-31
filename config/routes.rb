@@ -14,7 +14,7 @@ Rails.application.routes.draw do
       post "auth/verify_reset_token", to: "auth#verify_reset_token"
       patch "auth/reset_password", to: "auth#reset_password"
 
-      resources :accounts do
+      resources :accounts, only: [ :show, :update, :destroy ] do
         patch :change_password, on: :member
         patch :toggle_business, on: :collection
         patch :submit_verification, on: :collection
@@ -59,14 +59,14 @@ Rails.application.routes.draw do
       end
       post "agora/token", to: "agora#token"
       post "cashfree/payments", to: "cashfree_payments#create"
-      get "cashfree/payments/:order_id/verify", to: "cashfree_payments#verify"
-      get "payment-status", to: "cashfree_payments#verify"
+      post "cashfree/payments/:order_id/verify", to: "cashfree_payments#verify"
+      post "payment-status", to: "cashfree_payments#verify"
       post "cashfree/webhook", to: "cashfree_payments#webhook"
       post "device_monitoring/sync", to: "device_monitoring#sync"
       post "device_monitoring/activity", to: "device_monitoring#activity"
       get "activity_logs", to: "device_monitoring#user_logs"
       resources :wallet_transactions, only: [ :index ]
-      resources :notifications, only: [ :index ] do
+      resources :notifications, only: [ :index, :destroy ] do
         collection do
           get :unread_count
           patch :mark_all_read
@@ -77,7 +77,9 @@ Rails.application.routes.draw do
       end
       resources :device_installations, only: [ :create, :destroy ]
       resources :favorites, only: [ :index ]
-      resources :schedules, except: [ :new, :edit ]
+      resources :schedules, except: [ :new, :edit ] do
+        post :bulk_create, on: :collection
+      end
       resources :reviews, only: [ :update, :destroy ]
     end
   end

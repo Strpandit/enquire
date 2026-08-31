@@ -5,10 +5,13 @@ class CallHistory < ApplicationRecord
   belongs_to :receiver_account, class_name: "Account", foreign_key: "receiver_account_id"
 
   enum :status, { initiated: 0, active: 1, ended: 2, declined: 3, missed: 4, expired: 5 }
-  enum :call_type, { voice: 0, video: 1 }
+  # call_type is backed by a string column (default "voice"), not an integer
+  # — the enum mapping must match the column's actual storage or Rails
+  # silently persists "0"/"1" strings instead of "voice"/"video".
+  enum :call_type, { voice: "voice", video: "video" }
 
   validates :caller_account_id, :receiver_account_id, :channel_name, presence: true
-  validates :amount_charged_cents, numericality: { greater_than_or_equal_to: 0 }
+  validates :amount_charged, numericality: { greater_than_or_equal_to: 0, only_integer: true }
 
   scope :recent, -> { order(created_at: :desc) }
   scope :for_account, ->(account_id) { where("caller_account_id = ? OR receiver_account_id = ?", account_id, account_id) }
@@ -20,7 +23,4 @@ class CallHistory < ApplicationRecord
     format("%02d:%02d", minutes, seconds)
   end
 
-  def amount_charged
-    amount_charged_cents.to_i / 100.0
-  end
 end

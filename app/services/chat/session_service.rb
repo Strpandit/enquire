@@ -18,7 +18,7 @@ module Chat
           customer_account: actor,
           business_profile: business_profile,
           status: :requested,
-          price_per_minute_cents: business_profile.chat_price_cents,
+          price_per_minute: business_profile.chat_price,
           requested_at: Time.current
         )
         ExpireChatSessionJob.set(wait_until: session.expires_at).perform_later(session.id)
@@ -39,18 +39,28 @@ module Chat
         ActivityLogger.log(account: actor, event: "CHAT_REQUEST_SENT", title: "Sent paid chat request to #{business_profile.business_name}")
         session
       end
+    rescue ActiveRecord::RecordNotUnique
+      # Lost a race to a concurrent request for the same conversation — the
+      # app-level check above can't fully close this, so the DB's unique
+      # index is the real guard. Surface the same friendly error either way.
+      raise Error, "A chat request is already active for this conversation"
     end
 
     def accept!(chat_session)
       ensure_business_owner!
       raise Error, "Only requested sessions can be accepted" unless chat_session.requested?
 
-      chat_session.update!(
-        status: :active,
-        started_at: Time.current,
-        last_billed_at: Time.current,
-        end_reason: nil
-      )
+      chat_session.with_lock do
+        raise Error, "Only requested sessions can be accepted" unless chat_session.requested?
+
+        chat_session.update!(
+          status: :active,
+          started_at: Time.current,
+          last_billed_at: Time.current,
+          end_reason: nil
+        )
+      end
+
       Chat::BillingService.new(chat_session).charge_upfront_first_minute!
       chat_session.reload
 

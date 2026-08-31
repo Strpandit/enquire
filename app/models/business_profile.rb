@@ -29,7 +29,10 @@ class BusinessProfile < ApplicationRecord
   validates :business_address, presence: true, length: { maximum: 500 }
   validates :bio, length: { maximum: 160 }, allow_blank: true
   validates :about, length: { maximum: 1_000 }, allow_blank: true
-  validates :chat_price, :call_price, :v_call_price, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
+  MINIMUM_RATE_PER_MINUTE = 20
+
+  validates :chat_price, :call_price, :v_call_price, numericality: { greater_than_or_equal_to: 0, only_integer: true }, allow_nil: true
+  validate :prices_meet_minimum_rate
   validates :gst_number, format: { with: GST_REGEX, message: "must be a valid GST number" }, allow_blank: true, if: :gst_enabled?
   validates :gst_number, uniqueness: true, if: :gst_number?
   validates :pincode, format: { with: PINCODE_REGEX, message: "must be 6 digits" }, allow_blank: true
@@ -55,18 +58,6 @@ class BusinessProfile < ApplicationRecord
     end
   end
 
-  def chat_price_cents
-    chat_price.to_i
-  end
-
-  def call_price_cents
-    call_price.to_i
-  end
-
-  def v_call_price_cents
-    v_call_price.to_i
-  end
-
   def gst_certificate_details
     attachment_details_for(gst_certificate)
   end
@@ -77,10 +68,6 @@ class BusinessProfile < ApplicationRecord
 
   def public_visible?
     approved?
-  end
-
-  def chat_price_cents
-    chat_price.to_i
   end
 
   private
@@ -106,6 +93,15 @@ class BusinessProfile < ApplicationRecord
     return unless categories.size > 15
 
     errors.add(:categories, "can have a maximum of 15 categories")
+  end
+
+  def prices_meet_minimum_rate
+    { chat_price: "Chat price", call_price: "Call price", v_call_price: "Video call price" }.each do |attr, label|
+      value = public_send(attr)
+      next if value.nil? || value.zero?
+
+      errors.add(attr, "must be at least ₹#{MINIMUM_RATE_PER_MINUTE}/min") if value < MINIMUM_RATE_PER_MINUTE
+    end
   end
 
   def ensure_share_token

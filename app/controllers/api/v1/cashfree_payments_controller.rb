@@ -4,11 +4,11 @@ module Api
       skip_before_action :authorize_request, only: [:webhook]
 
       def create
-        amount_cents = params.require(:amount_cents).to_i
-        raise ActionController::ParameterMissing, "amount_cents must be greater than 0" if amount_cents <= 0
+        amount = params.require(:amount).to_i
+        raise ActionController::ParameterMissing, "amount must be greater than 0" if amount <= 0
 
         order_id = "wallet_#{current_account.id}_#{SecureRandom.hex(8)}"
-        checkout = Cashfree::PaymentService.create_order(amount_cents: amount_cents, order_id: order_id, customer: current_account)
+        checkout = Cashfree::PaymentService.create_order(amount: amount, order_id: order_id, customer: current_account)
 
         render json: checkout.merge(order_id: order_id), status: :ok
       rescue StandardError => error
@@ -23,13 +23,12 @@ module Api
         return head :ok unless event[:status] == "PAID"
 
         if (account_id = event[:account_id]) && (account = Account.find_by(id: account_id))
-          Wallets::LedgerService.credit!(account: account, amount_cents: event[:amount_cents], description: "Wallet Top-Up", metadata: event.except(:amount_cents, :account_id))
-          ActivityLogger.log(account: account, event: "WALLET_TOPUP", title: "Added ₹#{event[:amount_cents]} to wallet", metadata: { order_id: event[:order_id] })
+          credit_wallet(account: account, order_id: event[:order_id], amount: event[:amount], source: "webhook")
         end
 
         head :ok
       end
-      
+
       def verify
         order_id = params[:order_id].presence || params[:orderId].presence || params[:id].presence
         raise ActionController::ParameterMissing, "order_id is required" if order_id.blank?
@@ -37,23 +36,14 @@ module Api
         result = Cashfree::PaymentService.get_order_status(order_id: order_id)
 
         if result[:order_status] == "PAID"
-          tx_exists = current_account.wallet_transactions.exists?(reference_type: "CashfreeOrder", reference_id: order_id)
-          unless tx_exists
-            Wallets::LedgerService.credit!(
-              account: current_account,
-              amount_cents: result[:amount_cents],
-              description: "Wallet Top-up",
-              metadata: { order_id: order_id, source: "verify_endpoint" }
-            )
-            ActivityLogger.log(account: current_account, event: "WALLET_TOPUP", title: "Added ₹#{result[:amount_cents]} to wallet", metadata: { order_id: order_id }, ip_address: request.remote_ip)
-          end
+          credit_wallet(account: current_account, order_id: order_id, amount: result[:amount], source: "verify_endpoint", ip_address: request.remote_ip)
 
           render json: {
             status: "success",
             message: "Payment verified and credited successfully!",
             order_id: order_id,
-            amount_cents: result[:amount_cents],
-            wallet_balance_cents: current_account.reload.wallet_balance_cents
+            amount: result[:amount],
+            wallet_balance: current_account.reload.wallet_balance
           }, status: :ok
         elsif result[:order_status] == "FAILED" || result[:order_status] == "USER_DROPPED" || result[:order_status] == "CANCELLED"
           render json: {
@@ -70,6 +60,22 @@ module Api
         end
       rescue StandardError => error
         render json: { errors: [error.message] }, status: :unprocessable_entity
+      end
+
+      private
+
+      def credit_wallet(account:, order_id:, amount:, source:, ip_address: nil)
+        result = Wallets::LedgerService.credit!(
+          account: account,
+          amount: amount,
+          description: "Wallet Top-Up",
+          metadata: { order_id: order_id, source: source },
+          idempotency_key: "cashfree_order_#{order_id}"
+        )
+
+        return if result.already_applied?
+
+        ActivityLogger.log(account: account, event: "WALLET_TOPUP", title: "Added ₹#{amount} to wallet", metadata: { order_id: order_id }, ip_address: ip_address)
       end
     end
   end

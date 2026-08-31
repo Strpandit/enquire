@@ -24,7 +24,7 @@ module Cashfree
       cf_environment == "PRODUCTION" ? "https://api.cashfree.com/pg" : "https://sandbox.cashfree.com/pg"
     end
 
-    def self.create_order(amount_cents:, order_id:, customer:)
+    def self.create_order(amount:, order_id:, customer:)
       api_url = URI.parse("#{base_url}/orders")
 
       phone_digits = customer.phone.to_s.gsub(/\D/, "")
@@ -36,7 +36,7 @@ module Cashfree
 
       body = {
         order_id: order_id,
-        order_amount: format("%.2f", amount_cents.to_f),
+        order_amount: format("%.2f", amount.to_f),
         order_currency: "INR",
         order_note: "Wallet top-up for account #{customer.id}",
         customer_details: {
@@ -78,14 +78,14 @@ module Cashfree
       data = JSON.parse(payload)
 
       order_id = data.fetch("order_id")
-      amount_cents = data.fetch("order_amount").to_f.to_i
+      amount = data.fetch("order_amount").to_f.round
       status = data.fetch("order_status")
       account_id = extract_account_id(order_id)
 
       {
         order_id: order_id,
         status: status,
-        amount_cents: amount_cents,
+        amount: amount,
         payment_id: data["payment_id"],
         account_id: account_id,
       }
@@ -128,12 +128,12 @@ module Cashfree
       body = JSON.parse(response.body) rescue {}
 
       status = body["order_status"] || "PENDING"
-      amount_cents = (body["order_amount"].to_f || 0).to_i
+      amount = body["order_amount"].to_f.round
 
       {
         order_id: order_id,
         order_status: status,
-        amount_cents: amount_cents,
+        amount: amount,
         raw_response: body
       }
     end

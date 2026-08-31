@@ -34,24 +34,28 @@ module Chat
     def charge_for_started_minutes!(started_minutes, from_time, now)
       customer = chat_session.customer_account
       business_owner = chat_session.business_profile.account
-      affordable_minutes = customer.wallet_balance_cents / chat_session.price_per_minute_cents
-      chargeable_minutes = [started_minutes, affordable_minutes].min
+      needs_end_for_insufficient_balance = false
 
-      if chargeable_minutes.zero?
-        end_for_insufficient_balance!(now)
-        return
-      end
+      chat_session.with_lock do
+        break unless chat_session.active?
 
-      chargeable_cents = chargeable_minutes * chat_session.price_per_minute_cents
-      billed_through = from_time + (chargeable_minutes * 60)
+        affordable_minutes = customer.wallet_balance / chat_session.price_per_minute
+        chargeable_minutes = [started_minutes, affordable_minutes].min
 
-      ActiveRecord::Base.transaction do
-        platform_fee_cents = chargeable_cents - (chargeable_cents * 0.8).to_i
-        expert_earning_cents = chargeable_cents - platform_fee_cents
+        if chargeable_minutes.zero?
+          needs_end_for_insufficient_balance = true
+          break
+        end
+
+        chargeable_amount = chargeable_minutes * chat_session.price_per_minute
+        billed_through = from_time + (chargeable_minutes * 60)
+
+        platform_fee = (chargeable_amount * 20) / 100
+        expert_earning = chargeable_amount - platform_fee
 
         Wallets::LedgerService.debit!(
           account: customer,
-          amount_cents: chargeable_cents,
+          amount: chargeable_amount,
           description: "Chat consultation fee",
           chat_session: chat_session,
           metadata: { billed_minutes: chargeable_minutes, billing_mode: "started_minute" },
@@ -59,22 +63,24 @@ module Chat
         )
         Wallets::LedgerService.credit_earnings!(
           account: business_owner,
-          amount_cents: expert_earning_cents,
+          amount: expert_earning,
           description: "Chat consultation earnings",
           chat_session: chat_session,
-          metadata: { billed_minutes: chargeable_minutes, billing_mode: "started_minute", platform_fee_cents: platform_fee_cents, platform_fee_percent: 20 },
+          metadata: { billed_minutes: chargeable_minutes, billing_mode: "started_minute", platform_fee: platform_fee, platform_fee_percent: 20 },
           reference: chat_session
         )
 
         chat_session.update!(
           billed_minutes: chat_session.billed_minutes + chargeable_minutes,
           billable_seconds: chat_session.billable_seconds + (chargeable_minutes * 60),
-          total_amount_cents: chat_session.total_amount_cents + chargeable_cents,
+          total_amount: chat_session.total_amount + chargeable_amount,
           last_billed_at: billed_through
         )
+
+        needs_end_for_insufficient_balance = true if chargeable_minutes < started_minutes
       end
 
-      if chargeable_minutes < started_minutes
+      if needs_end_for_insufficient_balance
         end_for_insufficient_balance!(now)
       else
         Chat::Broadcaster.broadcast_to_conversation(chat_session.chat_conversation, session_payload("billing_synced"))
@@ -82,12 +88,16 @@ module Chat
     end
 
     def end_for_insufficient_balance!(now)
-      chat_session.update!(
-        status: :ended,
-        ended_at: now,
-        end_reason: "insufficient_balance",
-        last_billed_at: now
-      )
+      chat_session.with_lock do
+        break if chat_session.ended?
+
+        chat_session.update!(
+          status: :ended,
+          ended_at: now,
+          end_reason: "insufficient_balance",
+          last_billed_at: now
+        )
+      end
       Chat::Broadcaster.broadcast_to_conversation(chat_session.chat_conversation, session_payload("session_ended"))
     end
 

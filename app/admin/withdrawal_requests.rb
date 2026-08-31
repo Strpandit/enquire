@@ -44,9 +44,9 @@ ActiveAdmin.register WithdrawalRequest do
         failure_reason: "Rejected by admin"
       )
 
-      resource.account.update!(
-        earnings_balance_cents: resource.account.earnings_balance_cents + resource.amount_cents
-      )
+      resource.account.with_lock do
+        resource.account.update!(earnings_balance: resource.account.earnings_balance + resource.amount)
+      end
 
       Notifications::Creator.call(
         recipient: resource.account,

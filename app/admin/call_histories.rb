@@ -7,7 +7,7 @@ ActiveAdmin.register CallHistory do
     column(:receiver) { |call| call.receiver_account&.full_name }
     column :call_type
     column("Duration (sec)") { |call| "#{call.duration_seconds}s" }
-    column("Amount Charged") { |call| "₹#{call.amount_charged_cents / 100.0}" }
+    column("Amount Charged") { |call| "₹#{call.amount_charged}" }
     column :status
     column :created_at
     actions
@@ -21,7 +21,7 @@ ActiveAdmin.register CallHistory do
       row :call_type
       row :channel_name
       row("Duration") { |call| "#{call.duration_seconds} seconds" }
-      row("Amount Charged") { |call| "₹#{call.amount_charged_cents / 100.0}" }
+      row("Amount Charged") { |call| "₹#{call.amount_charged}" }
       row :status
       row :end_reason
       row :started_at

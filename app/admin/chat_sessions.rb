@@ -6,9 +6,9 @@ ActiveAdmin.register ChatSession do
     column(:customer) { |sess| sess.customer_account&.full_name }
     column(:business) { |sess| sess.business_profile&.business_name }
     column :status
-    column("Price / Min") { |sess| "₹#{sess.price_per_minute_cents / 100.0}" }
+    column("Price / Min") { |sess| "₹#{sess.price_per_minute}" }
     column :billed_minutes
-    column("Total Charged") { |sess| "₹#{sess.total_amount_cents / 100.0}" }
+    column("Total Charged") { |sess| "₹#{sess.total_amount}" }
     column :created_at
     actions
   end
@@ -19,10 +19,10 @@ ActiveAdmin.register ChatSession do
       row(:customer) { |sess| sess.customer_account&.full_name }
       row(:business) { |sess| sess.business_profile&.business_name }
       row :status
-      row("Price Per Minute") { |sess| "₹#{sess.price_per_minute_cents / 100.0}" }
+      row("Price Per Minute") { |sess| "₹#{sess.price_per_minute}" }
       row :billable_seconds
       row :billed_minutes
-      row("Total Amount Charged") { |sess| "₹#{sess.total_amount_cents / 100.0}" }
+      row("Total Amount Charged") { |sess| "₹#{sess.total_amount}" }
       row :end_reason
       row :requested_at
       row :started_at

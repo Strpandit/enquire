@@ -17,7 +17,7 @@ class ChatSession < ApplicationRecord
     expired: 5
   }, default: :requested
 
-  validates :price_per_minute_cents, numericality: { greater_than: 0, only_integer: true }
+  validates :price_per_minute, numericality: { greater_than: 0, only_integer: true }
   validates :requested_at, presence: true
   validate :single_open_session_per_conversation
 

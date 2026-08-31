@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_08_27_060000) do
+ActiveRecord::Schema[8.0].define(version: 2026_08_31_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -37,13 +37,13 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_27_060000) do
     t.datetime "verified_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.integer "wallet_balance_cents", default: 0, null: false
+    t.integer "wallet_balance", default: 0, null: false
     t.string "uid"
     t.datetime "last_seen_at"
-    t.integer "earnings_balance_cents", default: 0, null: false
+    t.integer "earnings_balance", default: 0, null: false
     t.index "lower((email)::text)", name: "index_accounts_on_lower_email", unique: true
     t.index "lower((username)::text)", name: "index_accounts_on_lower_username", unique: true, where: "(username IS NOT NULL)"
-    t.index ["earnings_balance_cents"], name: "index_accounts_on_earnings_balance_cents"
+    t.index ["earnings_balance"], name: "index_accounts_on_earnings_balance"
     t.index ["phone"], name: "index_accounts_on_phone", unique: true
     t.index ["reset_password_token_digest"], name: "index_accounts_on_reset_password_token_digest", unique: true
     t.index ["uid"], name: "index_accounts_on_uid", unique: true
@@ -120,9 +120,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_27_060000) do
 
   create_table "business_profiles", force: :cascade do |t|
     t.bigint "account_id", null: false
-    t.decimal "chat_price", precision: 8, scale: 2
-    t.decimal "call_price", precision: 8, scale: 2
-    t.decimal "v_call_price", precision: 8, scale: 2
+    t.integer "chat_price"
+    t.integer "call_price"
+    t.integer "v_call_price"
     t.boolean "is_available", default: true
     t.boolean "gst_enabled", default: false
     t.string "gst_number"
@@ -152,7 +152,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_27_060000) do
     t.string "call_type", default: "voice", null: false
     t.string "channel_name", null: false
     t.integer "duration_seconds", default: 0, null: false
-    t.integer "amount_charged_cents", default: 0, null: false
+    t.integer "amount_charged", default: 0, null: false
     t.integer "status", default: 0, null: false
     t.datetime "started_at"
     t.datetime "ended_at"
@@ -209,19 +209,20 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_27_060000) do
     t.bigint "customer_account_id", null: false
     t.bigint "business_profile_id", null: false
     t.integer "status", default: 0, null: false
-    t.integer "price_per_minute_cents", null: false
+    t.integer "price_per_minute", null: false
     t.datetime "requested_at", null: false
     t.datetime "started_at"
     t.datetime "ended_at"
     t.datetime "last_billed_at"
     t.integer "billable_seconds", default: 0, null: false
     t.integer "billed_minutes", default: 0, null: false
-    t.integer "total_amount_cents", default: 0, null: false
+    t.integer "total_amount", default: 0, null: false
     t.string "end_reason"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["business_profile_id"], name: "index_chat_sessions_on_business_profile_id"
     t.index ["chat_conversation_id", "status"], name: "idx_chat_sessions_on_conversation_and_status"
+    t.index ["chat_conversation_id"], name: "idx_unique_open_chat_session_per_conversation", unique: true, where: "(status = ANY (ARRAY[0, 1]))"
     t.index ["chat_conversation_id"], name: "index_chat_sessions_on_chat_conversation_id"
     t.index ["customer_account_id"], name: "index_chat_sessions_on_customer_account_id"
   end
@@ -345,8 +346,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_27_060000) do
     t.bigint "account_id", null: false
     t.bigint "chat_session_id"
     t.integer "transaction_type", null: false
-    t.integer "amount_cents", null: false
-    t.integer "balance_after_cents", null: false
+    t.integer "amount", null: false
+    t.integer "balance_after", null: false
     t.string "entry_type", null: false
     t.string "reference_type"
     t.bigint "reference_id"
@@ -354,14 +355,16 @@ ActiveRecord::Schema[8.0].define(version: 2026_08_27_060000) do
     t.json "metadata", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "idempotency_key"
     t.index ["account_id"], name: "index_wallet_transactions_on_account_id"
     t.index ["chat_session_id"], name: "index_wallet_transactions_on_chat_session_id"
+    t.index ["idempotency_key"], name: "index_wallet_transactions_on_idempotency_key", unique: true, where: "(idempotency_key IS NOT NULL)"
     t.index ["reference_type", "reference_id"], name: "idx_wallet_transactions_on_reference"
   end
 
   create_table "withdrawal_requests", force: :cascade do |t|
     t.bigint "account_id", null: false
-    t.integer "amount_cents", null: false
+    t.integer "amount", null: false
     t.string "upi_id", null: false
     t.integer "status", default: 0, null: false
     t.string "withdrawal_id"

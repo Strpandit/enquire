@@ -6,16 +6,26 @@ class CallHistoryBlueprint < Blueprinter::Base
   association :receiver_account, blueprint: AccountBlueprint
 
   view :list do
-    fields :id, :call_type, :status, :duration_seconds, :amount_charged, :started_at, :ended_at, :created_at
+    fields :id, :call_type, :status, :duration_seconds, :amount_charged, :started_at, :ended_at, :end_reason, :created_at
 
     field :caller_account do |history|
       acc = history.caller_account
-      { id: acc.id, full_name: acc.full_name, is_verified: acc.is_verified? }
+      {
+        id: acc.id,
+        full_name: acc.full_name,
+        profile_pic_url: acc.profile_pic.attached? ? Rails.application.routes.url_helpers.url_for(acc.profile_pic) : nil,
+        is_verified: acc.is_verified?
+      }
     end
 
     field :receiver_account do |history|
       acc = history.receiver_account
-      { id: acc.id, full_name: acc.full_name, is_verified: acc.is_verified? }
+      {
+        id: acc.id,
+        full_name: acc.full_name,
+        profile_pic_url: acc.profile_pic.attached? ? Rails.application.routes.url_helpers.url_for(acc.profile_pic) : nil,
+        is_verified: acc.is_verified?
+      }
     end
   end
 end

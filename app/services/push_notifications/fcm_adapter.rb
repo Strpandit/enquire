@@ -5,14 +5,33 @@ module PushNotifications
   class FcmAdapter
     SCOPE = "https://www.googleapis.com/auth/firebase.messaging".freeze
 
+    class InvalidTokenError < StandardError; end
+
     def deliver(notification:, installation:)
       response = http_client.request(build_request(access_token, installation.device_token, notification))
-      raise "FCM push failed with status #{response.code}: #{response.body}" unless response.is_a?(Net::HTTPSuccess)
+      return true if response.is_a?(Net::HTTPSuccess)
 
-      true
+      if invalid_token_response?(response)
+        raise InvalidTokenError, "FCM rejected device_token as invalid/unregistered: #{response.body}"
+      end
+
+      raise "FCM push failed with status #{response.code}: #{response.body}"
     end
 
     private
+
+    def invalid_token_response?(response)
+      return false unless %w[400 404].include?(response.code)
+
+      body = JSON.parse(response.body)
+      status = body.dig("error", "status")
+      return true if %w[UNREGISTERED NOT_FOUND].include?(status)
+
+      status == "INVALID_ARGUMENT" &&
+        Array(body.dig("error", "details")).any? { |d| d.dig("fieldViolations")&.any? { |fv| fv["field"] == "message.token" } }
+    rescue JSON::ParserError
+      false
+    end
 
     def build_request(token, device_token, notification)
       request = Net::HTTP::Post.new(endpoint)

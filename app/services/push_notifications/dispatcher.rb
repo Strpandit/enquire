@@ -11,6 +11,9 @@ module PushNotifications
       installations.find_each do |installation|
         adapter.deliver(notification: notification, installation: installation)
         delivered = true
+      rescue PushNotifications::FcmAdapter::InvalidTokenError => e
+        installation.update_column(:active, false)
+        Rails.logger.warn("[PushNotifications] deactivated stale installation_id=#{installation.id}: #{e.message}")
       rescue StandardError => e
         Rails.logger.error("[PushNotifications] delivery_failed notification_id=#{notification.id} installation_id=#{installation.id} error=#{e.class}: #{e.message}")
       end

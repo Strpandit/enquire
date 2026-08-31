@@ -12,8 +12,14 @@ module Agora
       app_certificate = ENV.fetch("AGORA_APP_CERTIFICATE")
       raise Error, "Missing Agora credentials" if app_id.blank? || app_certificate.blank?
 
-      expire_ts = Time.now.to_i + expire_seconds
-      RtcTokenBuilder.build_token(app_id: app_id, app_certificate: app_certificate, channel_name: channel_name, uid: String(uid), role: role, expire_ts: expire_ts)
+      RtcTokenBuilder.build_token(
+        app_id: app_id,
+        app_certificate: app_certificate,
+        channel_name: channel_name,
+        uid: String(uid),
+        role: role,
+        expire_seconds: expire_seconds
+      )
     end
   end
 
@@ -23,59 +29,24 @@ module Agora
     PRIVILEGE_PUBLISH_VIDEO_STREAM = 3
     PRIVILEGE_PUBLISH_DATA_STREAM = 4
 
-    def self.build_token(app_id:, app_certificate:, channel_name:, uid:, role:, expire_ts:)
-      token = AccessToken.new(app_id, app_certificate, channel_name, uid)
-      token.add_privilege(PRIVILEGE_JOIN_CHANNEL, expire_ts)
+    def self.build_token(app_id:, app_certificate:, channel_name:, uid:, role:, expire_seconds:)
+      token = AccessToken2.new(app_id: app_id, app_certificate: app_certificate, expire_seconds: expire_seconds)
+      service = ServiceRtc.new(channel_name: channel_name, uid: uid)
+      service.add_privilege(PRIVILEGE_JOIN_CHANNEL, expire_seconds)
 
       if role == "publisher"
-        token.add_privilege(PRIVILEGE_PUBLISH_AUDIO_STREAM, expire_ts)
-        token.add_privilege(PRIVILEGE_PUBLISH_VIDEO_STREAM, expire_ts)
+        service.add_privilege(PRIVILEGE_PUBLISH_AUDIO_STREAM, expire_seconds)
+        service.add_privilege(PRIVILEGE_PUBLISH_VIDEO_STREAM, expire_seconds)
       end
 
+      token.add_service(service)
       token.build
     end
   end
 
-  # Implements Agora's "006" AccessToken binary format. Field order and
-  # endianness must match the official SDKs exactly (all integers are
-  # little-endian; app_id/channel_name/uid are signed as raw bytes, NOT
-  # length-prefixed) or the Agora servers will reject the token as invalid.
-  class AccessToken
-    VERSION = "006".freeze
+  module BytePacking
+    module_function
 
-    attr_reader :app_id, :app_certificate, :channel_name, :uid, :salt, :ts, :messages
-
-    def initialize(app_id, app_certificate, channel_name, uid)
-      @app_id = app_id
-      @app_certificate = app_certificate
-      @channel_name = channel_name.to_s
-      @uid = uid.to_s
-      @salt = SecureRandom.random_number(0xFFFFFFFF)
-      @ts = Time.now.to_i
-      @messages = {}
-    end
-
-    def add_privilege(privilege, expire_timestamp)
-      @messages[privilege] = expire_timestamp
-    end
-
-    def build
-      message = pack_uint32(salt) + pack_uint32(ts) + pack_map(messages)
-
-      to_sign = app_id.to_s.b + channel_name.b + uid.b + message
-      signature = OpenSSL::HMAC.digest("sha256", app_certificate, to_sign)
-
-      crc_channel = Zlib.crc32(channel_name)
-      crc_uid = Zlib.crc32(uid)
-
-      content = pack_bytes(signature) + pack_uint32(crc_channel) + pack_uint32(crc_uid) + pack_bytes(message)
-
-      "#{VERSION}#{app_id}#{Base64.strict_encode64(content)}"
-    end
-
-    private
-
-    # All integers are little-endian per the Agora "006" token spec.
     def pack_uint16(value)
       [value].pack("v")
     end
@@ -88,16 +59,84 @@ module Agora
       pack_uint16(bytes.bytesize) + bytes
     end
 
-    def pack_map(map)
-      # Privileges must be written in ascending key order (Java's TreeMap
-      # semantics in the reference implementation).
-      sorted = map.sort_by { |key, _| key }
+    def pack_string(str)
+      pack_bytes(str.to_s.b)
+    end
+  end
+
+  RTC_SERVICE_TYPE = 1
+
+  class ServiceRtc
+    include BytePacking
+
+    def initialize(channel_name:, uid:)
+      @channel_name = channel_name.to_s
+      @uid = uid.to_s == "0" ? "" : uid.to_s
+      @privileges = {}
+    end
+
+    def add_privilege(privilege, expire_seconds)
+      @privileges[privilege] = expire_seconds
+    end
+
+    def pack
+      pack_type + pack_privileges + pack_string(@channel_name) + pack_string(@uid)
+    end
+
+    private
+
+    def pack_type
+      pack_uint16(RTC_SERVICE_TYPE)
+    end
+
+    def pack_privileges
+      sorted = @privileges.sort_by { |key, _| key }
       packed = pack_uint16(sorted.size)
       sorted.each do |key, value|
         packed << pack_uint16(key)
         packed << pack_uint32(value)
       end
       packed
+    end
+  end
+
+  class AccessToken2
+    include BytePacking
+    VERSION = "007".freeze
+
+    def initialize(app_id:, app_certificate:, expire_seconds:)
+      @app_id = app_id
+      @app_certificate = app_certificate
+      @issue_ts = Time.now.to_i
+      @expire_seconds = expire_seconds
+      @salt = SecureRandom.random_number(99_999_999) + 1
+      @services = []
+    end
+
+    def add_service(service)
+      @services << service
+    end
+
+    def build
+      signing_info = pack_string(@app_id) +
+                     pack_uint32(@issue_ts) +
+                     pack_uint32(@expire_seconds) +
+                     pack_uint32(@salt) +
+                     pack_uint16(@services.size)
+      @services.each { |service| signing_info << service.pack }
+
+      signature = OpenSSL::HMAC.digest("sha256", signing_key, signing_info)
+      content = pack_bytes(signature) + signing_info
+      compressed = Zlib::Deflate.deflate(content)
+
+      "#{VERSION}#{Base64.strict_encode64(compressed)}"
+    end
+
+    private
+
+    def signing_key
+      step1 = OpenSSL::HMAC.digest("sha256", pack_uint32(@issue_ts), @app_certificate)
+      OpenSSL::HMAC.digest("sha256", pack_uint32(@salt), step1)
     end
   end
 end

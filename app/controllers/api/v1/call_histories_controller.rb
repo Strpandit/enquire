@@ -20,8 +20,8 @@ module Api
         call_type = params.require(:call_type)
         channel_name = params.require(:channel_name)
 
-        receiver = Account.find(receiver_id)
-        raise ActionController::ParameterMissing, "Invalid receiver account" unless receiver
+        receiver = Account.find_by(id: receiver_id) || BusinessProfile.find_by(id: receiver_id)&.account
+        raise ActionController::ParameterMissing, "Receiver account not found" unless receiver
 
         history = Calls::HistoryService.initiate_call(
           caller: current_account,

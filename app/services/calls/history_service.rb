@@ -211,19 +211,26 @@ module Calls
     end
 
     def self.finish_call!(history:, duration_seconds: 0, end_reason: nil)
-      return history if history.ended?
+      return history if history.ended? || history.declined? || history.missed? || history.expired?
 
       duration_sec = history.started_at ? (Time.current - history.started_at).to_i : duration_seconds.to_i
       normalized_type = (history.video? ? "video" : "voice")
 
       already_ended = false
       history.with_lock do
-        if history.ended?
+        if history.ended? || history.declined? || history.missed? || history.expired?
           already_ended = true
           break
         end
 
-        status_to_set = (history.initiated? && ["no_answer", "unanswered"].include?(end_reason.to_s)) ? :missed : :ended
+        status_to_set = if ["declined_by_receiver", "call_declined", "declined"].include?(end_reason.to_s)
+                          :declined
+                        elsif ["no_answer", "unanswered", "call_missed", "missed"].include?(end_reason.to_s)
+                          :missed
+                        else
+                          :ended
+                        end
+
         history.update!(
           status: status_to_set,
           duration_seconds: duration_sec,

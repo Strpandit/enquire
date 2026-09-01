@@ -146,6 +146,10 @@ class Account < ApplicationRecord
     business_profile.present? && is_business?
   end
 
+  def password_token_fingerprint
+    Digest::SHA256.hexdigest(password_digest.to_s)[0, 12]
+  end
+
   def online?
     Rails.cache.read("account_presence:#{id}") == true
   end

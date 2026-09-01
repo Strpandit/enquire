@@ -14,11 +14,22 @@ module ApplicationCable
     private
 
     def find_verified_account
+      if (ticket = request.params[:ticket].presence)
+        account_id = Rails.cache.read("cable_ticket:#{ticket}")
+        reject_unauthorized_connection if account_id.blank?
+        Rails.cache.delete("cable_ticket:#{ticket}")
+        return Account.find(account_id)
+      end
+
       token = request.params[:token].presence || authorization_token
       reject_unauthorized_connection if token.blank?
 
       payload = JsonWebToken.decode(token)
-      Account.find(payload.fetch("account_id"))
+      account = Account.find(payload.fetch("account_id"))
+      if payload["pwd"].present? && payload["pwd"] != account.password_token_fingerprint
+        reject_unauthorized_connection
+      end
+      account
     rescue JWT::DecodeError, JWT::VerificationError, JWT::ExpiredSignature, ActiveRecord::RecordNotFound, KeyError
       reject_unauthorized_connection
     end

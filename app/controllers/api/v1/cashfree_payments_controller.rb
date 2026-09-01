@@ -11,14 +11,18 @@ module Api
         checkout = Cashfree::PaymentService.create_order(amount: amount, order_id: order_id, customer: current_account)
 
         render json: checkout.merge(order_id: order_id), status: :ok
-      rescue StandardError => error
-        render json: { errors: [error.message] }, status: :unprocessable_entity
+      rescue => error
+        render_service_error(error)
       end
 
       def webhook
         payload = request.raw_post
-        signature = request.headers["X-Cashfree-Signature"] || request.headers["HTTP_X_CASHFREE_SIGNATURE"]
-        event = Cashfree::PaymentService.process_webhook!(payload: payload, signature: signature)
+        signature = request.headers["x-webhook-signature"] ||
+                    request.headers["X-Cashfree-Signature"] ||
+                    request.headers["HTTP_X_CASHFREE_SIGNATURE"]
+        timestamp = request.headers["x-webhook-timestamp"]
+
+        event = Cashfree::PaymentService.process_webhook!(payload: payload, signature: signature, timestamp: timestamp)
 
         return head :ok unless event[:status] == "PAID"
 
@@ -27,11 +31,18 @@ module Api
         end
 
         head :ok
+      rescue Cashfree::PaymentService::Error => e
+        Rails.logger.warn("[cashfree] webhook rejected: #{e.message}")
+        head :bad_request
       end
 
       def verify
         order_id = params[:order_id].presence || params[:orderId].presence || params[:id].presence
         raise ActionController::ParameterMissing, "order_id is required" if order_id.blank?
+
+        if Cashfree::PaymentService.extract_account_id(order_id) != current_account.id
+          return render json: { errors: ["This order does not belong to your account"] }, status: :forbidden
+        end
 
         result = Cashfree::PaymentService.get_order_status(order_id: order_id)
 
@@ -58,8 +69,8 @@ module Api
             order_id: order_id
           }, status: :ok
         end
-      rescue StandardError => error
-        render json: { errors: [error.message] }, status: :unprocessable_entity
+      rescue => error
+        render_service_error(error)
       end
 
       private

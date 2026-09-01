@@ -51,7 +51,7 @@ module Api
         if current_account.authenticate(params[:current_password])
           if current_account.update(password: params[:new_password], password_confirmation: params[:confirm_password])
             ActivityLogger.log(account: current_account, event: "PASSWORD_CHANGE", title: "Updated account security password", ip_address: request.remote_ip)
-            render json: { message: "Password updated successfully", status: 200 }, status: :ok
+            render json: { message: "Password updated successfully", status: 200, token: JsonWebToken.encode_for(current_account) }, status: :ok
           else
             render json: { errors: current_account.errors.full_messages }, status: :unprocessable_entity
           end

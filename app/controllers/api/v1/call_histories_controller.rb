@@ -33,8 +33,8 @@ module Api
         render json: {
           call_history: CallHistoryBlueprint.render_as_hash(history)
         }, status: :created
-      rescue StandardError => error
-        render json: { errors: [ error.message ] }, status: :unprocessable_entity
+      rescue => error
+        render_service_error(error)
       end
 
       def accept
@@ -45,8 +45,8 @@ module Api
           message: "Call accepted",
           call_history: CallHistoryBlueprint.render_as_hash(history)
         }, status: :ok
-      rescue StandardError => error
-        render json: { errors: [ error.message ] }, status: :unprocessable_entity
+      rescue => error
+        render_service_error(error)
       end
 
       def decline
@@ -57,8 +57,8 @@ module Api
           message: "Call declined",
           call_history: CallHistoryBlueprint.render_as_hash(history)
         }, status: :ok
-      rescue StandardError => error
-        render json: { errors: [ error.message ] }, status: :unprocessable_entity
+      rescue => error
+        render_service_error(error)
       end
 
       def heartbeat
@@ -70,8 +70,8 @@ module Api
           message: "Call billing synced",
           call_history: CallHistoryBlueprint.render_as_hash(history)
         }, status: :ok
-      rescue StandardError => error
-        render json: { errors: [ error.message ] }, status: :unprocessable_entity
+      rescue => error
+        render_service_error(error)
       end
 
       def end_call
@@ -86,8 +86,8 @@ module Api
         )
 
         render json: { message: "Call ended successfully" }, status: :ok
-      rescue StandardError => error
-        render json: { errors: [ error.message ] }, status: :unprocessable_entity
+      rescue => error
+        render_service_error(error)
       end
 
       private

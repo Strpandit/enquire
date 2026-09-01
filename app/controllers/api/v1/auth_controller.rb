@@ -13,7 +13,7 @@ module Api
 
         render json: {
           account: JSON.parse(AccountBlueprint.render(account)),
-          token: JsonWebToken.encode(account_id: account.id),
+          token: JsonWebToken.encode_for(account),
           message: "Account created successfully"
         }, status: :created
       end
@@ -29,7 +29,7 @@ module Api
 
         render json: {
           account: JSON.parse(AccountBlueprint.render(account)),
-          token: JsonWebToken.encode(account_id: account.id),
+          token: JsonWebToken.encode_for(account),
           message: "Login successful"
         }, status: :ok
       rescue ActiveRecord::RecordNotFound
@@ -99,7 +99,10 @@ module Api
         AccountAuthMailer.password_reset_confirmation(account).deliver_later
         ActivityLogger.log(account: account, event: "PASSWORD_RESET", title: "Reset account password successfully", ip_address: request.remote_ip)
 
-        render json: { message: "Password reset successfully" }, status: :ok
+        render json: {
+          message: "Password reset successfully",
+          token: JsonWebToken.encode_for(account)
+        }, status: :ok
       end
 
       private

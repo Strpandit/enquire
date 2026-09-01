@@ -35,8 +35,8 @@ module Api
           withdrawal_request: WithdrawalRequestBlueprint.render_as_hash(withdrawal),
           earnings_balance: current_account.earnings_balance
         }, status: :created
-      rescue StandardError => error
-        render json: { errors: [error.message] }, status: :unprocessable_entity
+      rescue => error
+        render_service_error(error)
       end
 
       def cancel
@@ -55,8 +55,8 @@ module Api
           message: "Withdrawal request cancelled successfully",
           earnings_balance: current_account.earnings_balance
         }, status: :ok
-      rescue StandardError => error
-        render json: { errors: [error.message] }, status: :unprocessable_entity
+      rescue => error
+        render_service_error(error)
       end
     end
   end

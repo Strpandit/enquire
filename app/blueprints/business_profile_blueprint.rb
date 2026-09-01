@@ -34,11 +34,15 @@ class BusinessProfileBlueprint < Blueprinter::Base
     "previewtax://expert/#{bp.account.uid}"
   end
 
-  field :gst_certificate_url do |bp|
+  field :gst_certificate_url do |bp, options|
+    next nil unless options[:viewer] && options[:viewer].id == bp.account_id
+
     bp.gst_certificate.attached? ? Rails.application.routes.url_helpers.url_for(bp.gst_certificate) : nil
   end
 
-  field :gst_certificate do |bp|
+  field :gst_certificate do |bp, options|
+    next nil unless options[:viewer] && options[:viewer].id == bp.account_id
+
     bp.gst_certificate_details
   end
 

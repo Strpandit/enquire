@@ -2,6 +2,7 @@ require "net/http"
 require "uri"
 require "json"
 require "openssl"
+require "base64"
 
 module Cashfree
   class PaymentService
@@ -73,8 +74,8 @@ module Cashfree
       }
     end
 
-    def self.process_webhook!(payload:, signature:)
-      verify_webhook!(payload, signature)
+    def self.process_webhook!(payload:, signature:, timestamp: nil)
+      verify_webhook!(payload, signature, timestamp)
       data = JSON.parse(payload)
 
       order_id = data.fetch("order_id")
@@ -93,15 +94,20 @@ module Cashfree
       raise Error, "Invalid webhook payload: #{error.message}"
     end
 
-    def self.verify_webhook!(payload, signature)
+    def self.verify_webhook!(payload, signature, timestamp = nil)
       secret = ENV.fetch("CASHFREE_SECRET_KEY")
       raise Error, "Cashfree webhook secret is not configured" if secret.blank?
       raise Error, "Webhook signature missing" if signature.blank?
 
-      expected = OpenSSL::HMAC.hexdigest("SHA256", secret, payload)
-      unless ActiveSupport::SecurityUtils.secure_compare(expected, signature.to_s)
-        raise Error, "Invalid Cashfree webhook signature"
+      candidates = []
+      if timestamp.present?
+        candidates << Base64.strict_encode64(OpenSSL::HMAC.digest("SHA256", secret, "#{timestamp}#{payload}"))
       end
+      candidates << Base64.strict_encode64(OpenSSL::HMAC.digest("SHA256", secret, payload))
+      candidates << OpenSSL::HMAC.hexdigest("SHA256", secret, payload) # legacy
+
+      matched = candidates.any? { |c| ActiveSupport::SecurityUtils.secure_compare(c, signature.to_s) }
+      raise Error, "Invalid Cashfree webhook signature" unless matched
 
       true
     end

@@ -20,6 +20,10 @@ module Api
 
         payload = JsonWebToken.decode(token)
         @current_account = Account.find(payload.fetch("account_id"))
+
+        if payload["pwd"].present? && payload["pwd"] != @current_account.password_token_fingerprint
+          render_unauthorized
+        end
       rescue ActiveRecord::RecordNotFound, KeyError, NoMethodError
         render_unauthorized
       end
@@ -49,11 +53,33 @@ module Api
         requested = params[:per_page].to_i
         return 10 if requested <= 0
 
-        [requested, 50].min
+        [ requested, 50 ].min
       end
 
       def bearer_token
         request.headers["Authorization"]&.split&.last
+      end
+
+      # Only surface messages from errors we deliberately raise for the user.
+      # Everything else gets a generic message + a full server-side log entry,
+      # so internal / DB details never leak to the client.
+      SAFE_ERROR_CLASSES = [
+        "Calls::HistoryService::Error",
+        "Cashfree::PaymentService::Error",
+        "Wallets::LedgerService::Error",
+        "Chat::SessionService::Error",
+        "Chat::MessageService::Error",
+        "ActiveRecord::RecordInvalid",
+        "ActionController::ParameterMissing"
+      ].freeze
+
+      def render_service_error(error, status: :unprocessable_entity)
+        if SAFE_ERROR_CLASSES.include?(error.class.name)
+          render json: { errors: [ error.message ] }, status: status
+        else
+          Rails.logger.error("[#{controller_name}##{action_name}] #{error.class}: #{error.message}\n#{Array(error.backtrace).first(5).join("\n")}")
+          render json: { errors: [ "Something went wrong. Please try again." ] }, status: :internal_server_error
+        end
       end
 
       def render_unauthorized

@@ -12,7 +12,7 @@ default: &default
 
 development:
   <<: *default
-  database: enquire_dev
+  database: pwtax_dev
   username: <%= ENV['DB_USERNAME'] %>
   password: <%= ENV['DB_PASSWORD'] %>
   host: <%= ENV['DB_HOST'] %>
@@ -23,7 +23,7 @@ development:
 # Do not set this db to the same as development or production.
 test:
   <<: *default
-  database: enquire_test
+  database: pwtax_test
   username: <%= ENV['DB_USERNAME'] %>
   password: <%= ENV['DB_PASSWORD'] %>
   host: <%= ENV['DB_HOST'] %>

@@ -51,8 +51,11 @@ module Api
           app_version: device.app_version,
           app_build: device.app_build
         }, status: :ok
-      rescue StandardError => error
+      rescue ActionController::ParameterMissing => error
         render json: { errors: [error.message] }, status: :unprocessable_entity
+      rescue StandardError => error
+        Rails.logger.error("[device_monitoring#sync] #{error.class}: #{error.message}")
+        render json: { errors: ["Unable to sync device"] }, status: :unprocessable_entity
       end
 
       def activity
@@ -70,8 +73,8 @@ module Api
         )
 
         render json: { status: "ok", log_id: log.id }, status: :created
-      rescue StandardError => error
-        render json: { errors: [error.message] }, status: :unprocessable_entity
+      rescue => error
+        render_service_error(error)
       end
 
       def user_logs

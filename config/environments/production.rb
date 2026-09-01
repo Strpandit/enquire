@@ -51,12 +51,15 @@ Rails.application.configure do
   # Don't log any deprecations.
   config.active_support.report_deprecations = false
 
-  # Replace the default in-process memory cache store with a durable alternative.
-  config.cache_store = :memory_store, { size: 64.megabytes }
+  # Durable, DB-backed cache (survives restarts, shared across processes).
+  config.cache_store = :solid_cache_store
 
-  # Replace the default in-process and non-durable queuing backend for Active Job.
-  config.active_job.queue_adapter = :async
-  # config.solid_queue.connects_to = { database: { writing: :queue } }
+  # Durable, DB-backed job queue. Jobs are no longer lost on deploy/restart.
+  # Processing runs inside Puma when SOLID_QUEUE_IN_PUMA=true (see config/puma.rb);
+  # otherwise run a separate `bin/jobs` worker process.
+  config.active_job.queue_adapter = :solid_queue
+  # Single database — Solid Queue lives in the primary DB, so no connects_to.
+  config.solid_queue.silence_polling = true
 
   # Ignore bad email addresses and do not raise email delivery errors.
   # Set this to true and configure the email server for immediate delivery to raise delivery errors.
@@ -88,11 +91,14 @@ Rails.application.configure do
   config.active_record.attributes_for_inspect = [ :id ]
 
   # Enable DNS rebinding protection and other `Host` header attacks.
-  # config.hosts = [
-  #   "example.com",     # Allow requests from example.com
-  #   /.*\.example\.com/ # Allow requests from subdomains like `www.example.com`
-  # ]
-  #
-  # Skip DNS rebinding protection for the default health check endpoint.
-  # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+  config.hosts = [
+    "enquire-4kwv.onrender.com",
+    "previewtax.com",
+    /.*\.previewtax\.com/
+  ]
+  # Allow overriding / adding hosts from the environment without a redeploy.
+  config.hosts += ENV.fetch("ADDITIONAL_HOSTS", "").split(",").map(&:strip).reject(&:blank?)
+
+  # Skip DNS rebinding protection for the health check endpoint.
+  config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
 end

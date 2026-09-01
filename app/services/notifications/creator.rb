@@ -27,9 +27,7 @@ module Notifications
     attr_reader :recipient, :notification_type, :title, :body, :actor, :notifiable, :payload, :push, :collapse
 
     def build_notification!
-      notification = Notification.create!(notification_attributes)
-      dispatch_push!(notification)
-      notification
+      Notification.create!(notification_attributes)
     end
 
     def find_or_refresh_collapsed_notification!
@@ -52,19 +50,8 @@ module Notifications
           )
         end
 
-        dispatch_push!(notification)
         notification
       end
-    end
-
-    # Enqueue FCM push delivery as a background job so it doesn't block the
-    # request cycle. The job calls PushNotifications::Dispatcher which handles
-    # FCM token lookup and delivery.
-    def dispatch_push!(notification)
-      return unless push
-      return if notification.blank?
-
-      PushNotificationDeliveryJob.perform_later(notification.id)
     end
 
     def notification_attributes

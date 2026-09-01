@@ -12,5 +12,5 @@ test:
   <<: *default
 
 production:
-  database: cache
+  # No `database:` key — Solid Cache uses the primary database (single-DB setup).
   <<: *default

@@ -14,6 +14,7 @@ Rails.application.routes.draw do
       post "auth/verify_reset_token", to: "auth#verify_reset_token"
       patch "auth/reset_password", to: "auth#reset_password"
 
+      get "accounts/me", to: "accounts#show"
       resources :accounts, only: [ :show, :update, :destroy ] do
         patch :change_password, on: :member
         patch :toggle_business, on: :collection
@@ -57,6 +58,7 @@ Rails.application.routes.draw do
           post :cancel
         end
       end
+      post "cable_ticket", to: "cable_tickets#create"
       post "agora/token", to: "agora#token"
       post "cashfree/payments", to: "cashfree_payments#create"
       post "cashfree/payments/:order_id/verify", to: "cashfree_payments#verify"
@@ -75,7 +77,9 @@ Rails.application.routes.draw do
           patch :mark_read
         end
       end
-      resources :device_installations, only: [ :create, :destroy ]
+      resources :device_installations, only: [ :create, :destroy ] do
+        post :report, on: :collection
+      end
       resources :favorites, only: [ :index ]
       resources :schedules, except: [ :new, :edit ] do
         post :bulk_create, on: :collection

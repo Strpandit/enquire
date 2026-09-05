@@ -91,10 +91,6 @@ module PushNotifications
       }
 
       if is_call
-        # DATA-ONLY for calls: no `notification` block, so the app's background
-        # handler always runs and renders the full-screen call UI itself
-        # (Notifee). A `notification` block here would cause a duplicate,
-        # non-full-screen OS notification.
         message[:data]["fcm_call"] = "1"
       else
         message[:notification] = { title: notification.title, body: notification.body }
@@ -148,27 +144,67 @@ module PushNotifications
       )
     end
 
-    # Resolve the service-account JSON from (in order):
-    #   1. FIREBASE_SERVICE_ACCOUNT_JSON  (raw JSON string — recommended on Render)
-    #   2. FIREBASE_SERVICE_ACCOUNT_PATH  (path to a file on disk)
-    #   3. Rails encrypted credentials    (firebase: { service_account_json: "..." })
-    #   4. config/firebase_service_account.json  (local dev convenience)
     def service_account_json
-      @service_account_json ||=
-        ENV["FIREBASE_SERVICE_ACCOUNT_JSON"].presence ||
-        (ENV["FIREBASE_SERVICE_ACCOUNT_PATH"].present? && File.exist?(ENV["FIREBASE_SERVICE_ACCOUNT_PATH"]) && File.read(ENV["FIREBASE_SERVICE_ACCOUNT_PATH"])) ||
-        Rails.application.credentials.dig(:firebase, :service_account_json).presence ||
-        (default_file_path.exist? && default_file_path.read) ||
-        raise(ConfigurationError, "No Firebase service-account credentials found (set FIREBASE_SERVICE_ACCOUNT_JSON)")
+      @service_account_json ||= normalize_service_account_json(resolve_raw_service_account_json)
+    end
+
+    def resolve_raw_service_account_json
+      if ENV["FIREBASE_SERVICE_ACCOUNT_JSON"].present?
+        ENV["FIREBASE_SERVICE_ACCOUNT_JSON"]
+      elsif ENV["FIREBASE_SERVICE_ACCOUNT_PATH"].present? && File.exist?(ENV["FIREBASE_SERVICE_ACCOUNT_PATH"])
+        File.read(ENV["FIREBASE_SERVICE_ACCOUNT_PATH"])
+      elsif render_secret_file_path.exist?
+        render_secret_file_path.read
+      elsif Rails.application.credentials.dig(:firebase, :service_account_json).present?
+        Rails.application.credentials.dig(:firebase, :service_account_json)
+      elsif default_file_path.exist?
+        default_file_path.read
+      else
+        raise ConfigurationError, "No Firebase service-account credentials found (set FIREBASE_SERVICE_ACCOUNT_JSON or add secret file)"
+      end
+    end
+
+    def normalize_service_account_json(raw)
+      cleaned = raw.to_s.strip
+      if (cleaned.start_with?("'") && cleaned.end_with?("'")) || (cleaned.start_with?('"') && cleaned.end_with?('"') && cleaned.count('"') > 2 && !cleaned[1..-2].include?('"'))
+        cleaned = cleaned[1..-2].strip
+      end
+
+      parsed =
+        begin
+          JSON.parse(cleaned)
+        rescue JSON::ParserError
+          begin
+            JSON.parse(cleaned.gsub('\r\n', "\n").gsub('\n', "\n"))
+          rescue JSON::ParserError
+            nil
+          end
+        end
+
+      if parsed.is_a?(Hash)
+        if parsed["private_key"].is_a?(String)
+          if parsed["private_key"].include?('\n') && !parsed["private_key"].include?("\n")
+            parsed["private_key"] = parsed["private_key"].gsub('\n', "\n")
+          end
+        end
+        return parsed.to_json
+      end
+
+      cleaned
     end
 
     def default_file_path
       @default_file_path ||= Rails.root.join("config", "firebase_service_account.json")
     end
 
+    def render_secret_file_path
+      @render_secret_file_path ||= Pathname.new("/etc/secrets/firebase_service_account.json")
+    end
+
     def credential_source
       if ENV["FIREBASE_SERVICE_ACCOUNT_JSON"].present? then "env:FIREBASE_SERVICE_ACCOUNT_JSON"
       elsif ENV["FIREBASE_SERVICE_ACCOUNT_PATH"].present? && File.exist?(ENV["FIREBASE_SERVICE_ACCOUNT_PATH"]) then "env:FIREBASE_SERVICE_ACCOUNT_PATH"
+      elsif render_secret_file_path.exist? then "secret_file:/etc/secrets/firebase_service_account.json"
       elsif Rails.application.credentials.dig(:firebase, :service_account_json).present? then "rails_credentials"
       elsif default_file_path.exist? then "file:config/firebase_service_account.json"
       else "none"

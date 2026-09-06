@@ -100,5 +100,5 @@ Rails.application.configure do
   config.hosts += ENV.fetch("ADDITIONAL_HOSTS", "").split(",").map(&:strip).reject(&:blank?)
 
   # Skip DNS rebinding protection for the health check endpoint.
-  config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+  config.host_authorization = { exclude: ->(request) { request.path == "/up" || request.path == "/" } }
 end

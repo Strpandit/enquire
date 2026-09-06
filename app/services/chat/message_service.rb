@@ -102,12 +102,6 @@ module Chat
         collapse: true
       )
 
-      ActivityLogger.log(
-        account: sender,
-        event: "CHAT_MESSAGE_SENT",
-        title: "Sent message to #{recipient_account.full_name}"
-      )
-
       message
     end
 

@@ -6,8 +6,8 @@ class Account < ApplicationRecord
   PASSWORD_RESET_TOKEN_WINDOW = 15.minutes
 
   has_one :business_profile
-  has_many :reviews
-  has_many :favorites
+  has_many :reviews, dependent: :nullify
+  has_many :favorites, dependent: :nullify
   has_many :favorite_business_profiles, through: :favorites, source: :business_profile
   has_many :received_notifications, class_name: "Notification", foreign_key: :recipient_account_id
   has_many :sent_notifications, class_name: "Notification", foreign_key: :actor_account_id

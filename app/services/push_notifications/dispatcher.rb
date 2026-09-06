@@ -5,7 +5,7 @@ module PushNotifications
     end
 
     def deliver!
-      unless installations.exists?
+      if installations.empty?
         Rails.logger.warn(
           "[PushNotifications] no active device_installations for account_id=#{notification.recipient_account_id} " \
           "notification_id=#{notification.id} type=#{notification.notification_type} — nothing to push. " \
@@ -16,11 +16,11 @@ module PushNotifications
 
       Rails.logger.info(
         "[PushNotifications] dispatching notification_id=#{notification.id} type=#{notification.notification_type} " \
-        "account_id=#{notification.recipient_account_id} installations=#{installations.count} adapter=#{adapter.class.name}"
+        "account_id=#{notification.recipient_account_id} installations=#{installations.size} adapter=#{adapter.class.name}"
       )
 
       delivered = false
-      installations.find_each do |installation|
+      installations.each do |installation|
         adapter.deliver(notification: notification, installation: installation)
         delivered = true
       rescue PushNotifications::FcmAdapter::InvalidTokenError => e
@@ -45,7 +45,11 @@ module PushNotifications
     attr_reader :notification
 
     def installations
-      notification.recipient_account.device_installations.active.select(:id, :platform, :device_token)
+      @installations ||=
+        notification.recipient_account
+                    .device_installations.active
+                    .select(:id, :platform, :device_token)
+                    .to_a
     end
 
     def adapter

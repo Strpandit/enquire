@@ -8,3 +8,12 @@ production:
   sync_active_calls:
     class: SyncActiveCallsJob
     schedule: every 30 seconds
+  clear_solid_queue_finished_jobs:
+    command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
+    schedule: every hour on the 12th minute
+  clear_solid_queue_finished_batches:
+    command: "SolidQueue::Batch.clear_finished_in_batches(sleep_between_batches: 0.3)"
+    schedule: every hour on the 42nd minute
+  cleanup_operational_logs:
+    class: CleanupOperationalLogsJob
+    schedule: every day at midnight

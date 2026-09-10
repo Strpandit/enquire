@@ -17,6 +17,56 @@ module Calls
 
       raise Error, "You cannot call your own business profile" if caller.id == receiver.id
 
+      # 1. Check if caller is already in an ongoing call
+      caller_in_call = CallHistory
+        .where("caller_account_id = :id OR receiver_account_id = :id", id: caller.id)
+        .where("(status = 1) OR (status = 0 AND created_at > :timeout)", timeout: CallHistory::REQUEST_TIMEOUT.ago)
+        .exists?
+      raise Error, "You are already in an active call" if caller_in_call
+
+      # 2. Check if receiver is already in an ongoing call
+      receiver_in_call = CallHistory
+        .where("caller_account_id = :id OR receiver_account_id = :id", id: receiver.id)
+        .where("(status = 1) OR (status = 0 AND created_at > :timeout)", timeout: CallHistory::REQUEST_TIMEOUT.ago)
+        .exists?
+
+      if receiver_in_call
+        # Record a missed call so both parties see it in call history
+        missed_record = CallHistory.create!(
+          caller_account: caller,
+          receiver_account: receiver,
+          call_type: normalized_type,
+          channel_name: channel_name,
+          status: :missed,
+          ended_at: Time.current,
+          end_reason: "user_busy",
+          metadata: { billed_minutes: 0, rate_per_minute: rate }
+        )
+
+        Notifications::Creator.call(
+          recipient: receiver,
+          actor: caller,
+          notifiable: missed_record,
+          notification_type: "missed_call",
+          title: "Missed #{normalized_type == 'voice' ? 'Voice' : 'Video'} Call",
+          body: "#{caller.full_name} called you while you were on another call.",
+          payload: {
+            call_history_id: missed_record.id,
+            call_type: normalized_type,
+            channel_name: channel_name,
+            event: "missed_call"
+          }
+        )
+
+        ActivityLogger.log(
+          account: caller,
+          event: "#{normalized_type.upcase}_CALL_BUSY",
+          title: "Attempted #{normalized_type == 'voice' ? 'voice call' : 'video call'} to #{receiver.full_name} (User Busy)"
+        )
+
+        raise Error, "User is currently busy on another call. Please try again later."
+      end
+
       if rate > 0 && caller.wallet_balance < rate
         raise Error, "Insufficient wallet balance to start call (Requires minimum ₹#{rate}/min)"
       end
@@ -124,10 +174,10 @@ module Calls
       history
     end
 
-    def self.decline_call!(history:, account:)
+    def self.decline_call!(history:, account:, reason: "declined_by_receiver")
       raise Error, "Call cannot be declined" if history.ended?
 
-      history.update!(status: :declined, ended_at: Time.current, end_reason: "declined_by_receiver")
+      history.update!(status: :declined, ended_at: Time.current, end_reason: reason)
 
       # Mark any incoming_call notifications as read
       Notification.where(notifiable: history).update_all(read_at: Time.current)
@@ -138,6 +188,7 @@ module Calls
           {
             type: "call_history",
             event: "call_declined",
+            reason: reason,
             call_history_id: history.id,
             call: CallHistoryBlueprint.render_as_hash(history)
           }

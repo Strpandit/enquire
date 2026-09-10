@@ -51,7 +51,8 @@ module Api
 
       def decline
         history = find_participant_call
-        history = Calls::HistoryService.decline_call!(history: history, account: current_account)
+        reason = params[:reason].presence || "declined_by_receiver"
+        history = Calls::HistoryService.decline_call!(history: history, account: current_account, reason: reason)
 
         render json: {
           message: "Call declined",

@@ -4,7 +4,6 @@ module Api
       skip_before_action :authorize_request, only: [ :index, :show, :show_by_uid, :qr_code ]
       before_action :assign_optional_current_account, only: [ :index, :show, :show_by_uid, :qr_code ]
       before_action :set_business_profile, only: [ :show, :update, :destroy, :qr_code, :favorite, :unfavorite ]
-      before_action :authorize_request, only: [ :create, :update, :destroy, :favorite, :unfavorite ]
       before_action :ensure_owner!, only: [ :update, :destroy ]
       before_action :ensure_approved_for_favorite!, only: [ :favorite, :unfavorite ]
 

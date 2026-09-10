@@ -28,6 +28,7 @@ Rails.application.routes.draw do
         delete :unfavorite, on: :member
         collection do
           get "uid/:uid", to: "business_profiles#show_by_uid"
+          get :dashboard
         end
         resources :reviews, only: [ :index, :create ]
         resource :chat_request, only: [ :create ], controller: :chat_requests

@@ -29,7 +29,7 @@ class BusinessProfile < ApplicationRecord
   validates :business_address, presence: true, length: { maximum: 500 }
   validates :bio, length: { maximum: 160 }, allow_blank: true
   validates :about, length: { maximum: 1_000 }, allow_blank: true
-  MINIMUM_RATE_PER_MINUTE = 20
+  MINIMUM_RATE_PER_MINUTE = 10
 
   validates :chat_price, :call_price, :v_call_price, numericality: { greater_than_or_equal_to: 0, only_integer: true }, allow_nil: true
   validate :prices_meet_minimum_rate

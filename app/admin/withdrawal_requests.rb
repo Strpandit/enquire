@@ -17,6 +17,12 @@ ActiveAdmin.register WithdrawalRequest do
 
   member_action :approve_payout, method: :patch do
     ActiveRecord::Base.transaction do
+      resource.reload
+      unless resource.pending?
+        redirect_to resource_path, alert: "Payout request is no longer pending."
+        return
+      end
+
       resource.update!(
         status: :completed,
         approved_at: Time.current,
@@ -25,7 +31,6 @@ ActiveAdmin.register WithdrawalRequest do
 
       Notifications::Creator.call(
         recipient: resource.account,
-        actor: current_admin_user,
         notifiable: resource,
         notification_type: "withdrawal_approved",
         title: "Withdrawal Approved & Paid 🎉",
@@ -39,6 +44,12 @@ ActiveAdmin.register WithdrawalRequest do
 
   member_action :reject_payout, method: :patch do
     ActiveRecord::Base.transaction do
+      resource.reload
+      unless resource.pending?
+        redirect_to resource_path, alert: "Payout request is no longer pending."
+        return
+      end
+
       resource.update!(
         status: :rejected,
         failure_reason: "Rejected by admin"
@@ -50,7 +61,6 @@ ActiveAdmin.register WithdrawalRequest do
 
       Notifications::Creator.call(
         recipient: resource.account,
-        actor: current_admin_user,
         notifiable: resource,
         notification_type: "withdrawal_rejected",
         title: "Withdrawal Request Status Update",
@@ -67,9 +77,7 @@ ActiveAdmin.register WithdrawalRequest do
     id_column
     column(:account) { |req| req.account&.full_name }
     column(:upi_id)
-    column("Requested (₹)") { |req| "₹#{req.amount}" }
-    column("20% Cut (₹)") { |req| "₹#{req.deduction_amount}" }
-    column("Net Payout (₹)") { |req| "₹#{req.net_amount}" }
+    column("Payout (₹)") { |req| "₹#{req.amount}" }
     column :status
     column :created_at
     actions
@@ -81,9 +89,7 @@ ActiveAdmin.register WithdrawalRequest do
       row(:account) { |req| req.account&.full_name }
       row(:account_email) { |req| req.account&.email }
       row :upi_id
-      row("Requested Amount") { |req| "₹#{req.amount}" }
-      row("20% Platform Cut") { |req| "₹#{req.deduction_amount}" }
-      row("Net Payout Amount") { |req| "₹#{req.net_amount}" }
+      row("Payout Amount") { |req| "₹#{req.amount}" }
       row :status
       row :failure_reason
       row :approved_at

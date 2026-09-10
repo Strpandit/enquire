@@ -153,6 +153,116 @@ module Api
         render json: { message: "Expert removed from favorites" }, status: :ok
       end
 
+      def dashboard
+        unless current_account&.is_business && current_account.business_profile.present?
+          return render json: { error: "Business profile not found or user is not an expert" }, status: :forbidden
+        end
+
+        bp = current_account.business_profile
+        acc_id = current_account.id
+
+        # Calls
+        received_calls = CallHistory.where(receiver_account_id: acc_id)
+        total_calls = received_calls.count
+        ended_calls = received_calls.where(status: :ended)
+        missed_calls = received_calls.where(status: :missed).count
+        declined_calls = received_calls.where(status: :declined).count
+
+        missed_calls_pct = total_calls.positive? ? ((missed_calls.to_f / total_calls) * 100).round(1) : 0.0
+        declined_calls_pct = total_calls.positive? ? ((declined_calls.to_f / total_calls) * 100).round(1) : 0.0
+
+        audio_calls_scope = received_calls.where(call_type: "voice")
+        video_calls_scope = received_calls.where(call_type: "video")
+
+        audio_calls_count = audio_calls_scope.count
+        video_calls_count = video_calls_scope.count
+
+        audio_duration_seconds = audio_calls_scope.where(status: :ended).sum(:duration_seconds)
+        video_duration_seconds = video_calls_scope.where(status: :ended).sum(:duration_seconds)
+        total_duration_seconds = ended_calls.sum(:duration_seconds)
+
+        audio_mins = (audio_duration_seconds / 60.0).round(1)
+        video_mins = (video_duration_seconds / 60.0).round(1)
+        total_mins = (total_duration_seconds / 60.0).round(1)
+
+        avg_duration_sec = ended_calls.any? ? (total_duration_seconds / ended_calls.count.to_f).round : 0
+
+        # Chat Sessions
+        chat_sessions_scope = ChatSession.where(business_profile_id: bp.id)
+        ended_chats = chat_sessions_scope.where(status: :ended)
+        chat_sessions_count = ended_chats.count
+        chat_billed_minutes = ended_chats.sum(:billed_minutes)
+        chat_earnings = ended_chats.sum(:total_amount)
+
+        # Revenue & Financials
+        audio_earnings = audio_calls_scope.where(status: :ended).sum(:amount_charged)
+        video_earnings = video_calls_scope.where(status: :ended).sum(:amount_charged)
+        total_call_earnings = audio_earnings + video_earnings
+
+        wallet_earnings = current_account.wallet_transactions.where(transaction_type: :credit, entry_type: "earnings").sum(:amount)
+        calculated_total_earnings = [wallet_earnings, (total_call_earnings + chat_earnings)].max
+
+        completed_withdrawals = current_account.withdrawal_requests.where(status: [:approved, :completed]).sum(:amount)
+        pending_withdrawals = current_account.withdrawal_requests.where(status: :pending).sum(:amount)
+
+        # Repeat clients calculation
+        callers_counts = ended_calls.group(:caller_account_id).count
+        unique_callers = callers_counts.keys.size
+        repeat_callers_count = callers_counts.values.count { |count| count > 1 }
+        repeat_clients_pct = unique_callers.positive? ? ((repeat_callers_count.to_f / unique_callers) * 100).round(1) : 0.0
+
+        share_url = "https://previewtax.com/expert/#{current_account.uid}"
+
+        render json: {
+          profile: {
+            business_name: bp.business_name,
+            full_name: current_account.full_name,
+            username: current_account.username,
+            uid: current_account.uid,
+            profile_pic_url: current_account.profile_pic.attached? ? Rails.application.routes.url_helpers.url_for(current_account.profile_pic) : nil,
+            is_verified: current_account.is_verified?,
+            chat_price: bp.chat_price.to_i,
+            call_price: bp.call_price.to_i,
+            v_call_price: bp.v_call_price.to_i,
+            share_url: share_url,
+          },
+          revenue: {
+            earnings_balance: current_account.earnings_balance.to_i,
+            wallet_balance: current_account.wallet_balance.to_i,
+            total_earnings: calculated_total_earnings.to_i,
+            withdrawals_total: completed_withdrawals.to_i,
+            withdrawals_pending: pending_withdrawals.to_i,
+            video_call_earnings: video_earnings.to_i,
+            audio_call_earnings: audio_earnings.to_i,
+            chat_earnings: chat_earnings.to_i,
+          },
+          calls: {
+            total_calls: total_calls,
+            ended_calls_count: ended_calls.count,
+            audio_calls: audio_calls_count,
+            video_calls: video_calls_count,
+            video_mins: video_mins,
+            audio_mins: audio_mins,
+            total_call_mins: total_mins,
+            avg_duration_seconds: avg_duration_sec,
+            chat_sessions_count: chat_sessions_count,
+            chat_billed_minutes: chat_billed_minutes,
+            total_consultations: ended_calls.count + chat_sessions_count,
+          },
+          quality: {
+            avg_rating: bp.avg_rating.to_f.round(1),
+            reviews_count: bp.reviews_count.to_i,
+            missed_calls_count: missed_calls,
+            missed_calls_pct: missed_calls_pct,
+            declined_calls_count: declined_calls,
+            declined_calls_pct: declined_calls_pct,
+            repeat_clients_count: repeat_callers_count,
+            repeat_clients_pct: repeat_clients_pct,
+            unique_clients_count: unique_callers,
+          }
+        }, status: :ok
+      end
+
       private
 
       def set_business_profile

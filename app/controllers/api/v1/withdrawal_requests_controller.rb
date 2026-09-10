@@ -15,11 +15,16 @@ module Api
         amount = params.require(:amount).to_i
         upi_id = params.require(:upi_id).to_s.strip
 
-        raise ActionController::ParameterMissing, "Amount must be greater than 0" if amount <= 0
+        min = WithdrawalRequest::MINIMUM_WITHDRAWAL
+        if amount < min
+          return render json: { errors: [ "Minimum withdrawal amount is ₹#{min}" ] }, status: :unprocessable_entity
+        end
 
         withdrawal = nil
         current_account.with_lock do
-          raise ActionController::ParameterMissing, "Insufficient earnings balance" if current_account.earnings_balance < amount
+          if current_account.earnings_balance < amount
+            return render json: { errors: [ "Insufficient earnings balance" ] }, status: :unprocessable_entity
+          end
 
           withdrawal = current_account.withdrawal_requests.create!(
             amount: amount,
@@ -44,7 +49,9 @@ module Api
 
         current_account.with_lock do
           withdrawal.reload
-          raise ActionController::ParameterMissing, "Only pending requests can be cancelled" unless withdrawal.pending?
+          unless withdrawal.pending?
+            return render json: { errors: [ "Only pending requests can be cancelled" ] }, status: :unprocessable_entity
+          end
 
           withdrawal.update!(status: :rejected, failure_reason: "Cancelled by user")
           current_account.update!(earnings_balance: current_account.earnings_balance + withdrawal.amount)

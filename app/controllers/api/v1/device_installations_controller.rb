@@ -43,6 +43,18 @@ module Api
         render json: { message: "Device unregistered successfully" }, status: :ok
       end
 
+      def deactivate
+        token = params[:device_token].to_s
+        if token.blank?
+          return render json: { errors: [ "device_token is required" ] }, status: :unprocessable_entity
+        end
+
+        count = DeviceInstallation.where(device_token: token).update_all(active: false, last_seen_at: Time.current)
+        Rails.logger.info("[DeviceInstallations] deactivated #{count} installation(s) on logout token_prefix=#{token[0, 12]}…")
+
+        render json: { message: "Device deactivated" }, status: :ok
+      end
+
       def report
         details = params.permit(:stage, :message, :code, :native_error_code, :native_error_message, :platform, :os_version, :device_model, :app_version).to_h
 

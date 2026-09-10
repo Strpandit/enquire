@@ -80,6 +80,7 @@ Rails.application.routes.draw do
       end
       resources :device_installations, only: [ :create, :destroy ] do
         post :report, on: :collection
+        post :deactivate, on: :collection
       end
       resources :favorites, only: [ :index ]
       resources :schedules, except: [ :new, :edit ] do

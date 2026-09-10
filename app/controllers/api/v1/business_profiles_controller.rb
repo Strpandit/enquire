@@ -154,11 +154,13 @@ module Api
       end
 
       def dashboard
-        unless current_account&.is_business && current_account.business_profile.present?
-          return render json: { error: "Business profile not found or user is not an expert" }, status: :forbidden
+        return render json: { error: "Unauthorized access" }, status: :unauthorized unless current_account
+
+        bp = current_account.business_profile || BusinessProfile.find_by(account_id: current_account.id)
+        unless bp.present?
+          return render json: { error: "Create a business profile to view your expert dashboard." }, status: :forbidden
         end
 
-        bp = current_account.business_profile
         acc_id = current_account.id
 
         # Calls
@@ -219,7 +221,7 @@ module Api
             full_name: current_account.full_name,
             username: current_account.username,
             uid: current_account.uid,
-            profile_pic_url: current_account.profile_pic.attached? ? Rails.application.routes.url_helpers.url_for(current_account.profile_pic) : nil,
+            profile_pic_url: (current_account.profile_pic.attached? ? (url_for(current_account.profile_pic) rescue nil) : nil),
             is_verified: current_account.is_verified?,
             chat_price: bp.chat_price.to_i,
             call_price: bp.call_price.to_i,

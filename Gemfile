@@ -31,7 +31,7 @@ gem 'dotenv-rails', groups: [:development, :test]
 gem 'blueprinter'
 gem 'googleauth'
 gem "aws-sdk-s3"
-gem "cloudinary", "~> 2.1"
+gem "cloudinary"
 
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 gem "bcrypt", "~> 3.1.7"

@@ -6,13 +6,12 @@ local:
   service: Disk
   root: <%= Rails.root.join("storage") %>
 
-# Use bin/rails credentials:edit to set the AWS secrets (as aws:access_key_id|secret_access_key)
-amazon:
-  service: S3
-  access_key_id: <%= ENV['AWS_ACCESS_KEY'] %>
-  secret_access_key: <%= ENV['AWS_SECRET_ACCESS_KEY'] %>
-  region: us-east-1
-  bucket: previewtax
+# amazon:
+#   service: S3
+#   access_key_id: <%= ENV['AWS_ACCESS_KEY_ID'].presence || ENV['AWS_ACCESS_KEY'].presence %>
+#   secret_access_key: <%= ENV['AWS_SECRET_ACCESS_KEY'].presence || ENV['AWS_SECRET_KEY'].presence %>
+#   region: <%= ENV['AWS_REGION'].presence || 'us-east-1' %>
+#   bucket: <%= ENV['AWS_BUCKET'].presence || 'previewtax' %>
 
 # Remember not to checkin your GCS keyfile to a repository
 # google:
@@ -32,3 +31,5 @@ amazon:
 #   service: Mirror
 #   primary: local
 #   mirrors: [ amazon, google, microsoft ]
+cloudinary:
+  service: Cloudinary

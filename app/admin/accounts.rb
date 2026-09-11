@@ -106,9 +106,9 @@ ActiveAdmin.register Account do
           "Not uploaded"
         end
       end
-      row(:passport_photo) do |account|
-        if account.passport_photo.attached?
-          link_to(account.passport_photo.filename.to_s, url_for(account.passport_photo), target: "_blank")
+      row(:gst_certificate) do |account|
+        if account.respond_to?(:gst_certificate) && account.gst_certificate.attached?
+          link_to(account.gst_certificate.filename.to_s, url_for(account.gst_certificate), target: "_blank")
         else
           "Not uploaded"
         end

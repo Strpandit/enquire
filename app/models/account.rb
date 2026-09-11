@@ -27,7 +27,7 @@ class Account < ApplicationRecord
   has_one_attached :pan_card
   has_one_attached :aadhaar_card
   has_one_attached :aadhaar_card_back
-  has_one_attached :passport_photo
+  has_one_attached :gst_certificate
   has_many_attached :education_documents
 
   def is_verified?
@@ -36,9 +36,12 @@ class Account < ApplicationRecord
   end
   alias_method :is_verified, :is_verified?
 
+  VERIFICATION_CYCLE_DAYS = 180
+  VERIFICATION_PRICE = 351
+
   def verification_expires_at
     return nil unless verified_at.present?
-    verified_at + 28.days
+    verified_at + VERIFICATION_CYCLE_DAYS.days
   end
 
   def days_remaining
@@ -52,7 +55,10 @@ class Account < ApplicationRecord
   PINCODE_REGEX = /\A\d{6}\z/
   JPEG_CONTENT_TYPES = %w[image/jpeg image/jpg].freeze
   JPEG_EXTENSIONS = %w[.jpg .jpeg].freeze
+  DOC_OR_IMAGE_CONTENT_TYPES = %w[image/jpeg image/jpg image/png image/webp application/pdf].freeze
+  DOC_OR_IMAGE_EXTENSIONS = %w[.jpg .jpeg .png .webp .pdf].freeze
   MAX_IMAGE_SIZE = 1.megabyte
+  MAX_DOC_SIZE = 10.megabytes
   DANGEROUS_ATTACHMENT_EXTENSIONS = %w[
     .svg .js .mjs .html .htm .xhtml .xml .exe .bat .cmd .sh .php .jsp .aspx .cgi .pl
   ].freeze
@@ -84,7 +90,7 @@ class Account < ApplicationRecord
   validate :validate_profile_pic_attachment
   validate :validate_pan_card_attachment
   validate :validate_aadhaar_card_attachment
-  validate :validate_passport_photo_attachment
+  validate :validate_gst_certificate_attachment
 
   def languages
     JSON.parse(self[:languages].presence || "[]")
@@ -202,7 +208,7 @@ class Account < ApplicationRecord
 
     errors.add(:pan_card, "must be attached") unless pan_card.attached?
     errors.add(:aadhaar_card, "must be attached") unless aadhaar_card.attached?
-    errors.add(:passport_photo, "must be attached") unless passport_photo.attached?
+    errors.add(:gst_certificate, "must be attached") unless gst_certificate.attached?
   end
 
   def validate_profile_pic_attachment
@@ -217,8 +223,38 @@ class Account < ApplicationRecord
     validate_jpeg_attachment(:aadhaar_card, label: "Aadhaar card")
   end
 
-  def validate_passport_photo_attachment
-    validate_jpeg_attachment(:passport_photo, label: "passport photo")
+  def validate_gst_certificate_attachment
+    validate_image_or_pdf_attachment(:gst_certificate, label: "GST certificate")
+  end
+
+  def validate_image_or_pdf_attachment(name, label:)
+    attachment = public_send(name)
+    return unless attachment.attached?
+
+    blob = attachment.blob
+    return errors.add(name, "#{label} upload is invalid") if blob.blank?
+
+    if dangerous_attachment_filename?(blob.filename.to_s)
+      errors.add(name, "#{label} contains a forbidden file extension")
+      return
+    end
+
+    if suspicious_double_extension?(blob.filename.to_s, allowed_extensions: DOC_OR_IMAGE_EXTENSIONS)
+      errors.add(name, "#{label} filename contains a suspicious double extension")
+      return
+    end
+
+    unless DOC_OR_IMAGE_CONTENT_TYPES.include?(blob.content_type.to_s.downcase)
+      errors.add(name, "#{label} must be an image (JPG, PNG, WebP) or PDF document")
+    end
+
+    unless DOC_OR_IMAGE_EXTENSIONS.include?(File.extname(blob.filename.to_s).downcase)
+      errors.add(name, "#{label} must use an image (.jpg, .jpeg, .png, .webp) or .pdf format")
+    end
+
+    if blob.byte_size > MAX_DOC_SIZE
+      errors.add(name, "#{label} must be smaller than 10 MB")
+    end
   end
 
   def validate_jpeg_attachment(name, label:)

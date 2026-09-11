@@ -92,7 +92,7 @@ module Api
       end
 
       def verification_params
-        params.permit(:pan_card, :aadhaar_card, :aadhaar_card_back, :passport_photo, education_documents: [])
+        params.permit(:pan_card, :aadhaar_card, :aadhaar_card_back, :gst_certificate, education_documents: [])
       end
     end
   end

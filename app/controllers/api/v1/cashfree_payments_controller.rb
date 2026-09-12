@@ -1,7 +1,7 @@
 module Api
   module V1
     class CashfreePaymentsController < BaseController
-      skip_before_action :authorize_request, only: [:webhook]
+      skip_before_action :authorize_request, only: [ :webhook ]
 
       def create
         amount = params.require(:amount).to_i
@@ -41,7 +41,7 @@ module Api
         raise ActionController::ParameterMissing, "order_id is required" if order_id.blank?
 
         if Cashfree::PaymentService.extract_account_id(order_id) != current_account.id
-          return render json: { errors: ["This order does not belong to your account"] }, status: :forbidden
+          return render json: { errors: [ "This order does not belong to your account" ] }, status: :forbidden
         end
 
         result = Cashfree::PaymentService.get_order_status(order_id: order_id)

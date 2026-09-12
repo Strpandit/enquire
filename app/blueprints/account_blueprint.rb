@@ -16,7 +16,7 @@ class AccountBlueprint < Blueprinter::Base
   end
 
   field :profile_pic_url do |account|
-    account.profile_pic.attached? ? Rails.application.routes.url_helpers.url_for(account.profile_pic) : nil
+    account.profile_pic_url
   end
 
   field :profile_pic do |account|

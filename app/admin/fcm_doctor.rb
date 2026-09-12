@@ -34,6 +34,5 @@ ActiveAdmin.register_page "FCM Doctor" do
         column("push_sent_at") { |n| n.try(:push_sent_at) ? n.push_sent_at.strftime("%H:%M:%S") : "— (not delivered)" }
       end
     end
-
   end
 end

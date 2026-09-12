@@ -250,12 +250,12 @@ module Chat
             # Actual digit token
             token.each_char { |c| extracted_digits << c }
             consecutive_word_digits += token.length
-            max_consecutive_word_digits = [max_consecutive_word_digits, consecutive_word_digits].max
+            max_consecutive_word_digits = [ max_consecutive_word_digits, consecutive_word_digits ].max
           elsif (digit = WORD_TO_DIGIT[token])
             # Word number token
             extracted_digits << digit
             consecutive_word_digits += 1
-            max_consecutive_word_digits = [max_consecutive_word_digits, consecutive_word_digits].max
+            max_consecutive_word_digits = [ max_consecutive_word_digits, consecutive_word_digits ].max
           else
             # Reset streak if non-number word encountered (allow 1 skip word for noise like "and", "ka", "mera")
             unless %w[and ka mera apna my no number].include?(token)

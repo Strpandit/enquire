@@ -14,9 +14,9 @@ class CreateCallHistories < ActiveRecord::Migration[8.0]
       t.json "metadata", default: {}
       t.datetime "created_at", null: false
       t.datetime "updated_at", null: false
-      t.index ["caller_account_id"], name: "index_call_histories_on_caller_account_id"
-      t.index ["receiver_account_id"], name: "index_call_histories_on_receiver_account_id"
-      t.index ["created_at"], name: "index_call_histories_on_created_at"
+      t.index [ "caller_account_id" ], name: "index_call_histories_on_caller_account_id"
+      t.index [ "receiver_account_id" ], name: "index_call_histories_on_receiver_account_id"
+      t.index [ "created_at" ], name: "index_call_histories_on_created_at"
     end
 
     add_foreign_key "call_histories", "accounts", column: "caller_account_id"

@@ -1,6 +1,5 @@
 class AddChatAndWalletFoundation < ActiveRecord::Migration[8.0]
   def change
-
     add_column :accounts, :wallet_balance_cents, :integer, default: 0, null: false
     add_column :accounts, :uid, :string
     add_column :accounts, :last_seen_at, :datetime

@@ -44,7 +44,7 @@ GEM
       erubi (~> 1.11)
       rails-dom-testing (~> 2.2)
       rails-html-sanitizer (~> 1.6)
-    activeadmin (3.5.1)
+    activeadmin (3.5.2)
       arbre (~> 1.2, >= 1.2.1)
       csv
       formtastic (>= 3.1)
@@ -90,29 +90,10 @@ GEM
     arbre (1.7.0)
       activesupport (>= 3.0.0)
       ruby2_keywords (>= 0.0.2)
-    arctic_admin (4.3.3)
+    arctic_admin (4.4.1)
       activeadmin (>= 1.1.0, < 4.0)
       font-awesome-sass (~> 6.0)
     ast (2.4.3)
-    aws-eventstream (1.4.0)
-    aws-partitions (1.1237.0)
-    aws-sdk-core (3.244.0)
-      aws-eventstream (~> 1, >= 1.3.0)
-      aws-partitions (~> 1, >= 1.992.0)
-      aws-sigv4 (~> 1.9)
-      base64
-      bigdecimal
-      jmespath (~> 1, >= 1.6.1)
-      logger
-    aws-sdk-kms (1.123.0)
-      aws-sdk-core (~> 3, >= 3.244.0)
-      aws-sigv4 (~> 1.5)
-    aws-sdk-s3 (1.219.0)
-      aws-sdk-core (~> 3, >= 3.244.0)
-      aws-sdk-kms (~> 1)
-      aws-sigv4 (~> 1.5)
-    aws-sigv4 (1.12.1)
-      aws-eventstream (~> 1, >= 1.0.2)
     base64 (0.3.0)
     bcrypt (3.1.22)
     bcrypt_pbkdf (1.1.2)
@@ -126,6 +107,9 @@ GEM
     brakeman (8.0.4)
       racc
     builder (3.3.0)
+    bullet (8.2.0)
+      activesupport (>= 3.0.0)
+      uniform_notifier (~> 1.11)
     capybara (3.40.0)
       addressable
       matrix
@@ -225,7 +209,6 @@ GEM
     jbuilder (2.14.1)
       actionview (>= 7.0.0)
       activesupport (>= 7.0.0)
-    jmespath (1.6.2)
     jquery-rails (4.6.1)
       rails-dom-testing (>= 1, < 3)
       railties (>= 4.2.0)
@@ -328,9 +311,6 @@ GEM
     rack (3.2.5)
     rack-attack (6.8.0)
       rack (>= 1.0, < 4)
-    rack-cors (3.0.0)
-      logger
-      rack (>= 3.0.14)
     rack-session (2.1.1)
       base64 (>= 0.1.0)
       rack (>= 3.0.0)
@@ -495,6 +475,7 @@ GEM
     unicode-display_width (3.2.0)
       unicode-emoji (~> 4.1)
     unicode-emoji (4.2.0)
+    uniform_notifier (1.18.0)
     uri (1.1.1)
     useragent (0.16.11)
     warden (1.2.9)
@@ -520,11 +501,11 @@ DEPENDENCIES
   activeadmin
   acts_as_paranoid
   arctic_admin
-  aws-sdk-s3
   bcrypt (~> 3.1.7)
   blueprinter
   bootsnap
   brakeman
+  bullet
   capybara
   cloudinary
   debug
@@ -541,7 +522,6 @@ DEPENDENCIES
   propshaft
   puma (>= 5.0)
   rack-attack
-  rack-cors
   rails (~> 8.0.4)
   rqrcode
   rubocop-rails-omakase

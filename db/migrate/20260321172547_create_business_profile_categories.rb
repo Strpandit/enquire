@@ -7,6 +7,6 @@ class CreateBusinessProfileCategories < ActiveRecord::Migration[8.0]
       t.timestamps
     end
 
-    add_index :business_profile_categories, [:business_profile_id, :category_id], unique: true
+    add_index :business_profile_categories, [ :business_profile_id, :category_id ], unique: true
   end
 end

@@ -83,7 +83,7 @@ module Api
         return if current_account.business_profile.present?
 
         render json: {
-          errors: ["Create business profile first"]
+          errors: [ "Create business profile first" ]
         }, status: :unprocessable_entity
       end
 

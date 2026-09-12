@@ -27,7 +27,7 @@ module PushNotifications
         installation.update_column(:active, false)
         Rails.logger.warn("[PushNotifications] deactivated stale installation_id=#{installation.id}: #{e.message}")
       rescue PushNotifications::FcmAdapter::ConfigurationError => e
-        Rails.logger.error("[PushNotifications] FCM is misconfigured — push NOT sent. #{e.message}. Run `rails fcm:doctor` on the server.")
+        Rails.logger.error("[PushNotifications] FCM is misconfigured — push NOT sent. #{e.message}.")
         break
       rescue StandardError => e
         Rails.logger.error(
@@ -59,7 +59,7 @@ module PushNotifications
         Rails.logger.error(
           "[PushNotifications] FCM credentials NOT configured — falling back to LogAdapter. " \
           "Real push notifications are DISABLED. Set FIREBASE_SERVICE_ACCOUNT_JSON (+ FIREBASE_PROJECT_ID) " \
-          "in the server environment. See `rails fcm:doctor`."
+          "in the server environment."
         )
         PushNotifications::LogAdapter.new
       end

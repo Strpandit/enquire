@@ -19,8 +19,13 @@ class BusinessProfileBlueprint < Blueprinter::Base
   end
 
   field :favorite do |bp, options|
-    viewer = options[:viewer]
-    viewer.present? && viewer.favorite_business_profiles.exists?(bp.id)
+    next false unless options[:viewer].present?
+
+    if options.key?(:favorited_ids)
+      options[:favorited_ids].include?(bp.id)
+    else
+      options[:viewer].favorite_business_profiles.exists?(bp.id)
+    end
   end
 
   field :share_url do |bp, options|

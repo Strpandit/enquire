@@ -13,7 +13,7 @@ class CallHistoryBlueprint < Blueprinter::Base
       {
         id: acc.id,
         full_name: acc.full_name,
-        profile_pic_url: acc.profile_pic.attached? ? Rails.application.routes.url_helpers.url_for(acc.profile_pic) : nil,
+        profile_pic_url: acc.profile_pic_url,
         is_verified: acc.is_verified?
       }
     end
@@ -23,7 +23,7 @@ class CallHistoryBlueprint < Blueprinter::Base
       {
         id: acc.id,
         full_name: acc.full_name,
-        profile_pic_url: acc.profile_pic.attached? ? Rails.application.routes.url_helpers.url_for(acc.profile_pic) : nil,
+        profile_pic_url: acc.profile_pic_url,
         is_verified: acc.is_verified?
       }
     end

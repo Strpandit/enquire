@@ -10,9 +10,7 @@ class ChatMessageBlueprint < Blueprinter::Base
       uid: message.sender_account.uid,
       full_name: message.sender_account.full_name,
       username: message.sender_account.username,
-      profile_pic_url: message.sender_account.profile_pic.attached? \
-        ? Rails.application.routes.url_helpers.url_for(message.sender_account.profile_pic) \
-        : nil
+      profile_pic_url: message.sender_account.profile_pic_url
     }
   end
 

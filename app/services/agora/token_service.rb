@@ -48,11 +48,11 @@ module Agora
     module_function
 
     def pack_uint16(value)
-      [value].pack("v")
+      [ value ].pack("v")
     end
 
     def pack_uint32(value)
-      [value].pack("V")
+      [ value ].pack("V")
     end
 
     def pack_bytes(bytes)

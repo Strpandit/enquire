@@ -62,5 +62,8 @@ class ExpireCallHistoryJob < ApplicationJob
         }
       )
     end
+  rescue StandardError => e
+    Rails.logger.error("[ExpireCallHistoryJob] call_history=#{call_history_id} failed: #{e.class}: #{e.message}")
+    raise
   end
 end

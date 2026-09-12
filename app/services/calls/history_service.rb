@@ -182,7 +182,7 @@ module Calls
       # Mark any incoming_call notifications as read
       Notification.where(notifiable: history).update_all(read_at: Time.current)
 
-      [history.caller_account_id, history.receiver_account_id].compact.uniq.each do |target_acc_id|
+      [ history.caller_account_id, history.receiver_account_id ].compact.uniq.each do |target_acc_id|
         Notifications::Broadcaster.broadcast_payload(
           target_acc_id,
           {
@@ -208,10 +208,6 @@ module Calls
       history
     end
 
-    # `duration_seconds` is accepted for backward compatibility but is NOT
-    # trusted for billing — a modified client could report an arbitrarily
-    # small (or zero) duration to avoid being charged. Elapsed time is
-    # always computed server-side from `started_at`.
     def self.sync_call_billing!(history:, duration_seconds: nil)
       return history unless history.active?
 
@@ -274,13 +270,13 @@ module Calls
           break
         end
 
-        status_to_set = if ["declined_by_receiver", "call_declined", "declined"].include?(end_reason.to_s)
+        status_to_set = if [ "declined_by_receiver", "call_declined", "declined" ].include?(end_reason.to_s)
                           :declined
-                        elsif ["no_answer", "unanswered", "call_missed", "missed"].include?(end_reason.to_s)
+        elsif [ "no_answer", "unanswered", "call_missed", "missed" ].include?(end_reason.to_s)
                           :missed
-                        else
+        else
                           :ended
-                        end
+        end
 
         history.update!(
           status: status_to_set,
@@ -293,7 +289,7 @@ module Calls
 
       Notification.where(notifiable: history).update_all(read_at: Time.current)
 
-      [history.caller_account_id, history.receiver_account_id].compact.uniq.each do |target_acc_id|
+      [ history.caller_account_id, history.receiver_account_id ].compact.uniq.each do |target_acc_id|
         Notifications::Broadcaster.broadcast_payload(
           target_acc_id,
           {

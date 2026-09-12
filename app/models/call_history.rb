@@ -22,5 +22,4 @@ class CallHistory < ApplicationRecord
     seconds = duration_seconds % 60
     format("%02d:%02d", minutes, seconds)
   end
-
 end

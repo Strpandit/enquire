@@ -9,10 +9,18 @@ module Api
 
       def index
         reviews = @business_profile.reviews.includes(account: { profile_pic_attachment: :blob }).order(created_at: :desc).page(params[:page]).per(per_page)
-        render json: {
-          reviews: ReviewBlueprint.render_as_hash(reviews),
-          meta: pagination_meta(reviews)
-        }, status: :ok
+
+        cache_key = [
+          "reviews/index", @business_profile.id, params[:page], per_page,
+          @business_profile.reviews.maximum(:updated_at)&.to_i
+        ].join("/")
+        payload = Rails.cache.fetch(cache_key, expires_in: 30.minutes) do
+          {
+            reviews: ReviewBlueprint.render_as_hash(reviews),
+            meta: pagination_meta(reviews)
+          }
+        end
+        render json: payload, status: :ok
       end
 
       def create
@@ -66,7 +74,7 @@ module Api
         return if @review.account_id == current_account.id
 
         render json: {
-          errors: ["You are not allowed to modify this review"]
+          errors: [ "You are not allowed to modify this review" ]
         }, status: :forbidden
       end
 

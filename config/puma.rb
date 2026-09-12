@@ -25,7 +25,9 @@
 # be configured to provide at least as many connections as the number of
 # threads. This includes Active Record's `pool` parameter in `database.yml`.
 workers 0
-threads_count = ENV.fetch("RAILS_MAX_THREADS", 3)
+# Matches the default Active Record pool size (database.yml reads the same
+# RAILS_MAX_THREADS), so threads never queue up waiting for a DB connection.
+threads_count = ENV.fetch("RAILS_MAX_THREADS", 5)
 threads threads_count, threads_count
 
 # Specifies the `port` that Puma will listen on to receive requests; default is 3000.

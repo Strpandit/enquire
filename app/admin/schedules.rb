@@ -1,5 +1,4 @@
 ActiveAdmin.register Schedule do
-
   actions :index, :show, :destroy
 
   index do

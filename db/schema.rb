@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_09_01_120100) do
+ActiveRecord::Schema[8.0].define(version: 2026_09_12_080000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -142,6 +142,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_09_01_120100) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["account_id"], name: "index_business_profiles_on_account_id"
+    t.index ["approval_status", "avg_rating", "created_at"], name: "index_business_profiles_on_status_rating_created"
     t.index ["gst_number"], name: "index_business_profiles_on_gst_number", unique: true
     t.index ["share_token"], name: "index_business_profiles_on_share_token", unique: true
   end
@@ -517,6 +518,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_09_01_120100) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "idempotency_key"
+    t.index ["account_id", "created_at"], name: "index_wallet_transactions_on_account_id_and_created_at"
     t.index ["account_id"], name: "index_wallet_transactions_on_account_id"
     t.index ["chat_session_id"], name: "index_wallet_transactions_on_chat_session_id"
     t.index ["idempotency_key"], name: "index_wallet_transactions_on_idempotency_key", unique: true, where: "(idempotency_key IS NOT NULL)"

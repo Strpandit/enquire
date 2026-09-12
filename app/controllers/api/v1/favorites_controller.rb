@@ -2,13 +2,13 @@ module Api
   module V1
     class FavoritesController < BaseController
       def index
-        favorites = current_account.favorite_business_profiles.includes(account: { profile_pic_attachment: :blob }, categories: {}, schedules: {})
+        favorites = current_account.favorite_business_profiles.includes(account: { profile_pic_attachment: :blob }, categories: {}, schedules: {}, reviews: { account: {} })
                          .where(approval_status: :approved)
                          .order(created_at: :desc)
                          .page(params[:page]).per(per_page)
 
         render json: {
-          business_profiles: BusinessProfileBlueprint.render_as_hash(favorites, include_account: true),
+          business_profiles: BusinessProfileBlueprint.render_as_hash(favorites, include_account: true, viewer: current_account, favorited_ids: favorites.map(&:id).to_set),
           meta: pagination_meta(favorites)
         }, status: :ok
       end

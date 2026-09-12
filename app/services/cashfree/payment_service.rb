@@ -44,11 +44,11 @@ module Cashfree
           customer_id: "cust_#{customer.id}",
           customer_name: name_str,
           customer_email: email_str,
-          customer_phone: phone_digits,
+          customer_phone: phone_digits
         },
         order_meta: {
-          return_url: return_url_template,
-        },
+          return_url: return_url_template
+        }
       }
       body[:order_meta][:notify_url] = ENV["CASHFREE_NOTIFY_URL"] if ENV["CASHFREE_NOTIFY_URL"].present?
 
@@ -56,7 +56,7 @@ module Cashfree
         "Content-Type" => "application/json",
         "x-api-version" => "2023-08-01",
         "x-client-id" => ENV.fetch("CASHFREE_APP_ID"),
-        "x-client-secret" => ENV.fetch("CASHFREE_SECRET_KEY"),
+        "x-client-secret" => ENV.fetch("CASHFREE_SECRET_KEY")
       }
 
       response_body = post_request(api_url, body, headers)
@@ -70,7 +70,7 @@ module Cashfree
         order_id: response_body["order_id"] || order_id,
         payment_session_id: session_id,
         order_token: response_body["order_token"] || session_id,
-        cf_environment: cf_environment,
+        cf_environment: cf_environment
       }
     end
 
@@ -88,7 +88,7 @@ module Cashfree
         status: status,
         amount: amount,
         payment_id: data["payment_id"],
-        account_id: account_id,
+        account_id: account_id
       }
     rescue JSON::ParserError => error
       raise Error, "Invalid webhook payload: #{error.message}"
@@ -122,7 +122,7 @@ module Cashfree
       headers = {
         "x-api-version" => "2023-08-01",
         "x-client-id" => ENV.fetch("CASHFREE_APP_ID"),
-        "x-client-secret" => ENV.fetch("CASHFREE_SECRET_KEY"),
+        "x-client-secret" => ENV.fetch("CASHFREE_SECRET_KEY")
       }
 
       request = Net::HTTP::Get.new(api_url)
@@ -130,6 +130,8 @@ module Cashfree
 
       http = Net::HTTP.new(api_url.host, api_url.port)
       http.use_ssl = api_url.scheme == "https"
+      http.open_timeout = 10
+      http.read_timeout = 10
       response = http.request(request)
       body = JSON.parse(response.body) rescue {}
 
@@ -153,6 +155,8 @@ module Cashfree
 
       http = Net::HTTP.new(url.host, url.port)
       http.use_ssl = url.scheme == "https"
+      http.open_timeout = 10
+      http.read_timeout = 10
       response = http.request(request)
       JSON.parse(response.body)
     rescue StandardError => error

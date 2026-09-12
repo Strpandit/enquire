@@ -13,7 +13,7 @@ module Api
             "token_prefix=#{token[0, 16].inspect} length=#{token.length}"
           )
           return render json: {
-            errors: ["device_token does not look like a real FCM token"]
+            errors: [ "device_token does not look like a real FCM token" ]
           }, status: :unprocessable_entity
         end
 

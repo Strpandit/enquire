@@ -12,8 +12,8 @@ class CreateWithdrawalRequests < ActiveRecord::Migration[8.0]
       t.json "metadata", default: {}
       t.datetime "created_at", null: false
       t.datetime "updated_at", null: false
-      t.index ["account_id"], name: "index_withdrawal_requests_on_account_id"
-      t.index ["status"], name: "index_withdrawal_requests_on_status"
+      t.index [ "account_id" ], name: "index_withdrawal_requests_on_account_id"
+      t.index [ "status" ], name: "index_withdrawal_requests_on_status"
     end
 
     add_foreign_key "withdrawal_requests", "accounts"

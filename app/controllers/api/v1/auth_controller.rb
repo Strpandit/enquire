@@ -42,7 +42,7 @@ module Api
 
         if account&.otp_sent_at.present? && account.otp_sent_at > OTP_RESEND_COOLDOWN.ago
           return render json: {
-            errors: ["OTP already sent recently. Please wait a minute before requesting another."]
+            errors: [ "OTP already sent recently. Please wait a minute before requesting another." ]
           }, status: :too_many_requests
         end
 
@@ -141,4 +141,3 @@ module Api
     end
   end
 end
-

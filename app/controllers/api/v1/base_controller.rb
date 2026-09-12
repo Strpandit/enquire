@@ -3,6 +3,12 @@ module Api
     class BaseController < ActionController::API
       include ActionController::MimeResponds
 
+      # ActionController::API doesn't set this the way a full Rails app does,
+      # but ActiveStorage::Blob#url (called directly, e.g. for avatar
+      # thumbnails) needs it to build an absolute URL on non-Cloudinary
+      # services (local Disk in dev/test) — without it, any direct .url()
+      # call raises ArgumentError.
+      before_action :set_active_storage_url_options
       before_action :authorize_request
 
       rescue_from ActiveRecord::RecordNotFound, with: :render_not_found
@@ -13,6 +19,10 @@ module Api
       attr_reader :current_account
 
       private
+
+      def set_active_storage_url_options
+        ActiveStorage::Current.url_options = { host: request.host, port: request.port, protocol: request.protocol }
+      end
 
       def authorize_request
         token = bearer_token

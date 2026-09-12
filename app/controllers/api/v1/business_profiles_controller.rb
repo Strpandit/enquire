@@ -8,15 +8,17 @@ module Api
       before_action :ensure_approved_for_favorite!, only: [ :favorite, :unfavorite ]
 
       def index
-        business_profiles = BusinessProfile.includes(account: { profile_pic_attachment: :blob }, categories: {}, schedules: {})
+        business_profiles = BusinessProfile.includes(account: { profile_pic_attachment: :blob }, categories: {}, schedules: {}, reviews: { account: {} })
         business_profiles = business_profiles.where(approval_status: :approved)
         business_profiles = business_profiles.where.not(account_id: @current_account.id) if @current_account.present?
         business_profiles = apply_search(business_profiles)
         business_profiles = business_profiles.order(avg_rating: :desc, created_at: :desc).page(params[:page]).per(per_page)
 
         if business_profiles.present?
+          favorited_ids = current_account ? current_account.favorites.where(business_profile_id: business_profiles.map(&:id)).pluck(:business_profile_id).to_set : Set.new
+
           render json: {
-            business_profiles: BusinessProfileBlueprint.render_as_hash(business_profiles, host: request.base_url, viewer: current_account, include_account: true),
+            business_profiles: BusinessProfileBlueprint.render_as_hash(business_profiles, host: request.base_url, viewer: current_account, include_account: true, favorited_ids: favorited_ids),
             meta: pagination_meta(business_profiles)
           }, status: :ok
         else
@@ -160,12 +162,26 @@ module Api
           return render json: { error: "Create a business profile to view your expert dashboard." }, status: :forbidden
         end
 
+        # Expensive multi-query aggregate — a minute of staleness on a stats
+        # dashboard is imperceptible, and this cuts ~20 queries down to 0 on
+        # a cache hit (business owners tend to reload this screen a lot).
+        payload = Rails.cache.fetch("business_profiles/dashboard/#{current_account.id}", expires_in: 60.seconds) do
+          build_dashboard_payload(current_account, bp)
+        end
+
+        render json: payload, status: :ok
+      end
+
+      private
+
+      def build_dashboard_payload(current_account, bp)
         acc_id = current_account.id
 
         # Calls
         received_calls = CallHistory.where(receiver_account_id: acc_id)
         total_calls = received_calls.count
         ended_calls = received_calls.where(status: :ended)
+        ended_calls_count = ended_calls.count
         missed_calls = received_calls.where(status: :missed).count
         declined_calls = received_calls.where(status: :declined).count
 
@@ -186,7 +202,7 @@ module Api
         video_mins = (video_duration_seconds / 60.0).round(1)
         total_mins = (total_duration_seconds / 60.0).round(1)
 
-        avg_duration_sec = ended_calls.any? ? (total_duration_seconds / ended_calls.count.to_f).round : 0
+        avg_duration_sec = ended_calls_count.positive? ? (total_duration_seconds / ended_calls_count.to_f).round : 0
 
         # Chat Sessions
         chat_sessions_scope = ChatSession.where(business_profile_id: bp.id)
@@ -201,9 +217,9 @@ module Api
         total_call_earnings = audio_earnings + video_earnings
 
         wallet_earnings = current_account.wallet_transactions.where(transaction_type: :credit, entry_type: "earnings").sum(:amount)
-        calculated_total_earnings = [wallet_earnings, (total_call_earnings + chat_earnings)].max
+        calculated_total_earnings = [ wallet_earnings, (total_call_earnings + chat_earnings) ].max
 
-        completed_withdrawals = current_account.withdrawal_requests.where(status: [:approved, :completed]).sum(:amount)
+        completed_withdrawals = current_account.withdrawal_requests.where(status: [ :approved, :completed ]).sum(:amount)
         pending_withdrawals = current_account.withdrawal_requests.where(status: :pending).sum(:amount)
 
         # Repeat clients calculation
@@ -214,18 +230,18 @@ module Api
 
         share_url = "https://previewtax.com/expert/#{current_account.uid}"
 
-        render json: {
+        {
           profile: {
             business_name: bp.business_name,
             full_name: current_account.full_name,
             username: current_account.username,
             uid: current_account.uid,
-            profile_pic_url: (current_account.profile_pic.attached? ? (url_for(current_account.profile_pic) rescue nil) : nil),
+            profile_pic_url: current_account.profile_pic_url,
             is_verified: current_account.is_verified?,
             chat_price: bp.chat_price.to_i,
             call_price: bp.call_price.to_i,
             v_call_price: bp.v_call_price.to_i,
-            share_url: share_url,
+            share_url: share_url
           },
           revenue: {
             earnings_balance: current_account.earnings_balance.to_i,
@@ -235,11 +251,11 @@ module Api
             withdrawals_pending: pending_withdrawals.to_i,
             video_call_earnings: video_earnings.to_i,
             audio_call_earnings: audio_earnings.to_i,
-            chat_earnings: chat_earnings.to_i,
+            chat_earnings: chat_earnings.to_i
           },
           calls: {
             total_calls: total_calls,
-            ended_calls_count: ended_calls.count,
+            ended_calls_count: ended_calls_count,
             audio_calls: audio_calls_count,
             video_calls: video_calls_count,
             video_mins: video_mins,
@@ -248,7 +264,7 @@ module Api
             avg_duration_seconds: avg_duration_sec,
             chat_sessions_count: chat_sessions_count,
             chat_billed_minutes: chat_billed_minutes,
-            total_consultations: ended_calls.count + chat_sessions_count,
+            total_consultations: ended_calls_count + chat_sessions_count
           },
           quality: {
             avg_rating: bp.avg_rating.to_f.round(1),
@@ -259,12 +275,10 @@ module Api
             declined_calls_pct: declined_calls_pct,
             repeat_clients_count: repeat_callers_count,
             repeat_clients_pct: repeat_clients_pct,
-            unique_clients_count: unique_callers,
+            unique_clients_count: unique_callers
           }
-        }, status: :ok
+        }
       end
-
-      private
 
       def set_business_profile
         @business_profile = BusinessProfile.includes(account: { profile_pic_attachment: :blob }, categories: {}, schedules: {}, reviews: { account: { profile_pic_attachment: :blob } }).find(params[:id])
@@ -295,7 +309,7 @@ module Api
         end
 
         if params[:category_ids].present?
-          category_ids = Array(params[:category_ids]).flat_map { |value| value.to_s.split(',') }.map(&:to_i).uniq
+          category_ids = Array(params[:category_ids]).flat_map { |value| value.to_s.split(",") }.map(&:to_i).uniq
           scope = scope.joins(:business_profile_categories).where(business_profile_categories: { category_id: category_ids }) if category_ids.any?
         end
 

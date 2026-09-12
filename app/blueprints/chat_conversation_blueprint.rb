@@ -12,7 +12,7 @@ class ChatConversationBlueprint < Blueprinter::Base
       username: customer.username,
       online: customer.online?,
       last_seen_at: customer.last_seen_at,
-      profile_pic_url: customer.profile_pic.attached? ? Rails.application.routes.url_helpers.url_for(customer.profile_pic) : nil
+      profile_pic_url: customer.profile_pic_url
     }
   end
 
@@ -30,7 +30,7 @@ class ChatConversationBlueprint < Blueprinter::Base
       is_available: profile.currently_available?,
       online: owner.online?,
       last_seen_at: owner.last_seen_at,
-      profile_pic_url: owner.profile_pic.attached? ? Rails.application.routes.url_helpers.url_for(owner.profile_pic) : nil
+      profile_pic_url: owner.profile_pic_url
     }
   end
 

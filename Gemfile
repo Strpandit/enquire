@@ -23,14 +23,12 @@ gem "arctic_admin"
 gem "devise"
 gem "sass-rails"
 gem "sprockets"
-gem "rack-cors"
 gem "kaminari"
 gem "rqrcode"
-gem 'acts_as_paranoid'
-gem 'dotenv-rails', groups: [:development, :test]
-gem 'blueprinter'
-gem 'googleauth'
-gem "aws-sdk-s3"
+gem "acts_as_paranoid"
+gem "dotenv-rails", groups: [ :development, :test ]
+gem "blueprinter"
+gem "googleauth"
 gem "cloudinary"
 
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
@@ -73,6 +71,9 @@ end
 group :development do
   # Use console on exceptions pages [https://github.com/rails/web-console]
   gem "web-console"
+
+  # Detects N+1 queries and unused eager loading, logs a warning in dev only
+  gem "bullet"
 end
 
 group :test do

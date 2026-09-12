@@ -30,7 +30,7 @@ class ChatConversation < ApplicationRecord
       chat_sessions.where(status: [ :requested, :active ]).order(created_at: :desc)
     end
 
-    sessions.select { |session| session.status.in?(["requested", "active"]) }.max_by(&:created_at)
+    sessions.select { |session| session.status.in?([ "requested", "active" ]) }.max_by(&:created_at)
   end
 
   def unread_count_for(account, messages: nil)

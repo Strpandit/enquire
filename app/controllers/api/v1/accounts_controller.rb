@@ -78,7 +78,7 @@ module Api
           render json: { message: "Unable to delete account" }, status: :unprocessable_entity
         end
       end
-  
+
       private
 
       def account_params

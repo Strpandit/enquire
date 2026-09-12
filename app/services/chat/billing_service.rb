@@ -11,7 +11,7 @@ module Chat
 
       now = Time.current
       from_time = chat_session.last_billed_at || chat_session.started_at || now
-      elapsed_seconds = [now.to_i - from_time.to_i, 0].max
+      elapsed_seconds = [ now.to_i - from_time.to_i, 0 ].max
       started_new_minutes = elapsed_seconds / 60
       return chat_session if started_new_minutes.zero?
 
@@ -40,7 +40,7 @@ module Chat
         break unless chat_session.active?
 
         affordable_minutes = customer.wallet_balance / chat_session.price_per_minute
-        chargeable_minutes = [started_minutes, affordable_minutes].min
+        chargeable_minutes = [ started_minutes, affordable_minutes ].min
 
         if chargeable_minutes.zero?
           needs_end_for_insufficient_balance = true

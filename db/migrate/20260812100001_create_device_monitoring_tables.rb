@@ -43,6 +43,6 @@ class CreateDeviceMonitoringTables < ActiveRecord::Migration[7.1]
       t.timestamps
     end
 
-    add_index :devices, [:account_id, :device_uuid], unique: true
+    add_index :devices, [ :account_id, :device_uuid ], unique: true
   end
 end

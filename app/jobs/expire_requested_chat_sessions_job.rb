@@ -18,6 +18,9 @@ class ExpireRequestedChatSessionsJob < ApplicationJob
         body: "Your chat request expired because it was not accepted in time.",
         payload: { chat_conversation_id: chat_session.chat_conversation_id, chat_session_id: chat_session.id }
       )
+    rescue StandardError => e
+      Rails.logger.error("[ExpireRequestedChatSessionsJob] chat_session=#{chat_session.id} failed: #{e.class}: #{e.message}")
+      next
     end
   end
 end

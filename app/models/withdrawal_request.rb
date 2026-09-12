@@ -13,7 +13,7 @@ class WithdrawalRequest < ApplicationRecord
   validates :upi_id, format: { with: /\A[a-zA-Z0-9._-]+@[a-zA-Z0-9]+\z/, message: "format must be valid (example@bank)" }
 
   scope :recent, -> { order(created_at: :desc) }
-  scope :active, -> { where(status: [:pending, :approved]) }
+  scope :active, -> { where(status: [ :pending, :approved ]) }
 
   def deduction_amount
     0

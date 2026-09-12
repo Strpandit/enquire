@@ -46,7 +46,7 @@ class Account < ApplicationRecord
 
   def days_remaining
     return 0 unless verification_expires_at.present?
-    [((verification_expires_at - Time.current) / 1.day).ceil, 0].max
+    [ ((verification_expires_at - Time.current) / 1.day).ceil, 0 ].max
   end
 
   EMAIL_REGEX = URI::MailTo::EMAIL_REGEXP
@@ -166,6 +166,19 @@ class Account < ApplicationRecord
 
   def profile_pic_details
     attachment_details_for(profile_pic)
+  end
+
+  # A right-sized avatar URL instead of the full original upload. On Cloudinary
+  # (production) this generates an on-the-fly resized/cropped CDN URL; on other
+  # services (local disk in dev/test) the size options are simply ignored and a
+  # normal URL is returned. expires_in: nil avoids the default short-lived signed
+  # URL some services would otherwise generate.
+  AVATAR_THUMB_SIZE = 300
+
+  def profile_pic_url(width: AVATAR_THUMB_SIZE, height: AVATAR_THUMB_SIZE)
+    return nil unless profile_pic.attached?
+
+    profile_pic.url(expires_in: nil, width: width, height: height, crop: "thumb", gravity: "face")
   end
 
   private

@@ -6,6 +6,6 @@ class ActivityLog < ApplicationRecord
 
   scope :recent, -> { order(created_at: :desc) }
   scope :user_visible, -> {
-    where.not(event: ["APP_BACKGROUND", "APP_FOREGROUND", "DEVICE_SYNC"])
+    where.not(event: [ "APP_BACKGROUND", "APP_FOREGROUND", "DEVICE_SYNC" ])
   }
 end

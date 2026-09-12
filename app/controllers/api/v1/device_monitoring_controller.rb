@@ -52,10 +52,10 @@ module Api
           app_build: device.app_build
         }, status: :ok
       rescue ActionController::ParameterMissing => error
-        render json: { errors: [error.message] }, status: :unprocessable_entity
+        render json: { errors: [ error.message ] }, status: :unprocessable_entity
       rescue StandardError => error
         Rails.logger.error("[device_monitoring#sync] #{error.class}: #{error.message}")
-        render json: { errors: ["Unable to sync device"] }, status: :unprocessable_entity
+        render json: { errors: [ "Unable to sync device" ] }, status: :unprocessable_entity
       end
 
       def activity

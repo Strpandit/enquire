@@ -7,7 +7,7 @@ module Api
         role = params.fetch(:role, "publisher")
 
         history = CallHistory
-          .where(channel_name: channel_name, status: [CallHistory.statuses[:initiated], CallHistory.statuses[:active]])
+          .where(channel_name: channel_name, status: [ CallHistory.statuses[:initiated], CallHistory.statuses[:active] ])
           .where("caller_account_id = :id OR receiver_account_id = :id", id: current_account.id)
           .order(created_at: :desc)
           .first

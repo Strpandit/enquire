@@ -14,6 +14,19 @@ class ChatMessageBlueprint < Blueprinter::Base
     }
   end
 
+  field :reply_to do |message|
+    original = message.reply_to
+    next nil unless original
+
+    {
+      id: original.id,
+      sender_account_id: original.sender_account_id,
+      sender_name: original.sender_account&.full_name,
+      message_type: original.message_type,
+      content: original.content.to_s.truncate(120)
+    }
+  end
+
   field :attachments do |message|
     next [] unless message.attachments.attached?
 

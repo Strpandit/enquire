@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_09_12_080000) do
+ActiveRecord::Schema[8.0].define(version: 2026_09_18_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -199,9 +199,11 @@ ActiveRecord::Schema[8.0].define(version: 2026_09_12_080000) do
     t.json "metadata", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "reply_to_id"
     t.index ["chat_conversation_id", "created_at"], name: "idx_chat_messages_on_conversation_and_created_at"
     t.index ["chat_conversation_id"], name: "index_chat_messages_on_chat_conversation_id"
     t.index ["chat_session_id"], name: "index_chat_messages_on_chat_session_id"
+    t.index ["reply_to_id"], name: "index_chat_messages_on_reply_to_id"
     t.index ["sender_account_id"], name: "index_chat_messages_on_sender_account_id"
   end
 
@@ -554,6 +556,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_09_12_080000) do
   add_foreign_key "chat_conversations", "business_profiles"
   add_foreign_key "chat_messages", "accounts", column: "sender_account_id"
   add_foreign_key "chat_messages", "chat_conversations"
+  add_foreign_key "chat_messages", "chat_messages", column: "reply_to_id"
   add_foreign_key "chat_messages", "chat_sessions"
   add_foreign_key "chat_sessions", "accounts", column: "customer_account_id"
   add_foreign_key "chat_sessions", "business_profiles"

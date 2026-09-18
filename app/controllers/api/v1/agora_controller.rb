@@ -1,6 +1,8 @@
 module Api
   module V1
     class AgoraController < BaseController
+      rescue_from KeyError, Agora::TokenService::Error, with: :render_agora_misconfigured
+
       def token
         channel_name = params.require(:channel_name)
         uid = params.require(:uid)
@@ -20,6 +22,13 @@ module Api
           channel_name: channel_name,
           uid: uid
         }, status: :ok
+      end
+
+      private
+
+      def render_agora_misconfigured(error)
+        Rails.logger.error("[AgoraController] #{error.class}: #{error.message}")
+        render json: { errors: [ "Calling is temporarily unavailable. Please try again shortly." ] }, status: :service_unavailable
       end
     end
   end

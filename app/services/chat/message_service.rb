@@ -10,10 +10,16 @@ module Chat
       @sender       = sender
     end
 
-    def create!(content:, attachments: [])
+    def create!(content:, attachments: [], reply_to_message_id: nil)
       Chat::ConversationAccess.ensure_participant!(conversation: conversation, account: sender)
       chat_session = conversation.active_or_requested_session
       raise Error, "No active chat session found" unless chat_session&.active?
+
+      reply_to = nil
+      if reply_to_message_id.present?
+        reply_to = conversation.chat_messages.find_by(id: reply_to_message_id)
+        raise Error, "The message you're replying to no longer exists" unless reply_to
+      end
 
       Chat::BillingService.new(chat_session).sync!
       chat_session.reload
@@ -69,7 +75,8 @@ module Chat
           sender_account: sender,
           content: effective_content,
           sent_at: Time.current,
-          message_type: msg_type
+          message_type: msg_type,
+          reply_to: reply_to
         )
 
         message.attachments.attach(attachments) if attachments.any?

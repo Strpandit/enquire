@@ -8,7 +8,7 @@ module Api
         Chat::ReadReceiptService.new(conversation: conversation, reader: current_account).mark_all_read! if mark_read_param?
 
         messages_scope = conversation.chat_messages
-                                     .includes(:sender_account)
+                                     .includes(:sender_account, reply_to: :sender_account)
                                      .order(created_at: :asc)
 
         messages_scope = messages_scope.before_id(params[:before_id]) if params[:before_id].present?
@@ -27,7 +27,8 @@ module Api
           sender: current_account
         ).create!(
           content: message_content,
-          attachments: message_attachments
+          attachments: message_attachments,
+          reply_to_message_id: params[:reply_to_message_id]
         )
 
         render json: {

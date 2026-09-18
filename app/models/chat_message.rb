@@ -2,6 +2,7 @@ class ChatMessage < ApplicationRecord
   belongs_to :chat_conversation
   belongs_to :chat_session, optional: true
   belongs_to :sender_account, class_name: "Account"
+  belongs_to :reply_to, class_name: "ChatMessage", optional: true
 
   has_many_attached :attachments
 

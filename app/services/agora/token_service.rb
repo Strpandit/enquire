@@ -10,7 +10,7 @@ module Agora
     def self.generate(channel_name:, uid:, role: "publisher", expire_seconds: 3600)
       app_id = ENV.fetch("AGORA_APP_ID")
       app_certificate = ENV.fetch("AGORA_APP_CERTIFICATE")
-      raise Error, "Missing Agora credentials" if app_id.blank? || app_certificate.blank?
+      raise Error, "Missing Agora credentials" if app_id.to_s.strip.empty? || app_certificate.to_s.strip.empty?
 
       RtcTokenBuilder.build_token(
         app_id: app_id,
@@ -82,7 +82,7 @@ module Agora
     end
 
     def pack
-      pack_type + pack_string(@channel_name) + pack_string(@uid) + pack_privileges
+      pack_type + pack_privileges + pack_string(@channel_name) + pack_string(@uid)
     end
 
     private
@@ -137,8 +137,7 @@ module Agora
     private
 
     def signing_key
-      signing_ts = @issue_ts + @expire_seconds
-      step1 = OpenSSL::HMAC.digest("sha256", pack_uint32(signing_ts), @app_certificate)
+      step1 = OpenSSL::HMAC.digest("sha256", pack_uint32(@issue_ts), @app_certificate)
       OpenSSL::HMAC.digest("sha256", pack_uint32(@salt), step1)
     end
   end

@@ -33,6 +33,7 @@ module Agora
       token = AccessToken2.new(app_id: app_id, app_certificate: app_certificate, expire_seconds: expire_seconds)
       service = ServiceRtc.new(channel_name: channel_name, uid: uid)
       service.add_privilege(PRIVILEGE_JOIN_CHANNEL, expire_seconds)
+      service.add_privilege(PRIVILEGE_PUBLISH_DATA_STREAM, expire_seconds)
 
       if role == "publisher"
         service.add_privilege(PRIVILEGE_PUBLISH_AUDIO_STREAM, expire_seconds)
@@ -76,11 +77,11 @@ module Agora
     end
 
     def add_privilege(privilege, expire_seconds)
-      @privileges[privilege] = expire_seconds
+      @privileges[privilege] = Time.now.to_i + expire_seconds
     end
 
     def pack
-      pack_type + pack_privileges + pack_string(@channel_name) + pack_string(@uid)
+      pack_type + pack_string(@channel_name) + pack_string(@uid) + pack_privileges
     end
 
     private
@@ -118,9 +119,10 @@ module Agora
     end
 
     def build
+      expire_ts = @issue_ts + @expire_seconds
       signing_info = pack_string(@app_id) +
                      pack_uint32(@issue_ts) +
-                     pack_uint32(@expire_seconds) +
+                     pack_uint32(expire_ts) +
                      pack_uint32(@salt) +
                      pack_uint16(@services.size)
       @services.each { |service| signing_info << service.pack }
@@ -135,8 +137,10 @@ module Agora
     private
 
     def signing_key
-      step1 = OpenSSL::HMAC.digest("sha256", pack_uint32(@issue_ts), @app_certificate)
-      OpenSSL::HMAC.digest("sha256", pack_uint32(@salt), step1)
+      ts_bytes  = pack_uint32(@issue_ts)
+      salt_bytes = pack_uint32(@salt)
+      step1 = OpenSSL::HMAC.digest("sha256", ts_bytes, @app_certificate)
+      OpenSSL::HMAC.digest("sha256", salt_bytes, step1)
     end
   end
 end

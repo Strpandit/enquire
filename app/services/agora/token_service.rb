@@ -24,15 +24,16 @@ module Agora
   end
 
   class RtcTokenBuilder
-    PRIVILEGE_JOIN_CHANNEL = 1
+    PRIVILEGE_JOIN_CHANNEL        = 1
     PRIVILEGE_PUBLISH_AUDIO_STREAM = 2
     PRIVILEGE_PUBLISH_VIDEO_STREAM = 3
-    PRIVILEGE_PUBLISH_DATA_STREAM = 4
+    PRIVILEGE_PUBLISH_DATA_STREAM  = 4
 
     def self.build_token(app_id:, app_certificate:, channel_name:, uid:, role:, expire_seconds:)
-      token = AccessToken2.new(app_id: app_id, app_certificate: app_certificate, expire_seconds: expire_seconds)
+      token   = AccessToken2.new(app_id: app_id, app_certificate: app_certificate, expire_seconds: expire_seconds)
       service = ServiceRtc.new(channel_name: channel_name, uid: uid)
-      service.add_privilege(PRIVILEGE_JOIN_CHANNEL, expire_seconds)
+
+      service.add_privilege(PRIVILEGE_JOIN_CHANNEL,       expire_seconds)
       service.add_privilege(PRIVILEGE_PUBLISH_DATA_STREAM, expire_seconds)
 
       if role == "publisher"
@@ -72,12 +73,12 @@ module Agora
 
     def initialize(channel_name:, uid:)
       @channel_name = channel_name.to_s
-      @uid = uid.to_s == "0" ? "" : uid.to_s
-      @privileges = {}
+      @uid          = uid.to_s == "0" ? "" : uid.to_s
+      @privileges   = {}
     end
 
     def add_privilege(privilege, expire_seconds)
-      @privileges[privilege] = Time.now.to_i + expire_seconds
+      @privileges[privilege] = expire_seconds
     end
 
     def pack
@@ -93,9 +94,9 @@ module Agora
     def pack_privileges
       sorted = @privileges.sort_by { |key, _| key }
       packed = pack_uint16(sorted.size)
-      sorted.each do |key, value|
-        packed << pack_uint16(key)
-        packed << pack_uint32(value)
+      sorted.each do |priv_type, expire|
+        packed << pack_uint16(priv_type)
+        packed << pack_uint32(expire)
       end
       packed
     end
@@ -106,12 +107,12 @@ module Agora
     VERSION = "007".freeze
 
     def initialize(app_id:, app_certificate:, expire_seconds:)
-      @app_id = app_id
+      @app_id          = app_id
       @app_certificate = app_certificate
-      @issue_ts = Time.now.to_i
-      @expire_seconds = expire_seconds
-      @salt = SecureRandom.random_number(99_999_999) + 1
-      @services = []
+      @issue_ts        = Time.now.to_i
+      @expire_seconds  = expire_seconds
+      @salt            = SecureRandom.random_number(99_999_999) + 1
+      @services        = []
     end
 
     def add_service(service)
@@ -119,16 +120,15 @@ module Agora
     end
 
     def build
-      expire_ts = @issue_ts + @expire_seconds
       signing_info = pack_string(@app_id) +
                      pack_uint32(@issue_ts) +
-                     pack_uint32(expire_ts) +
+                     pack_uint32(@expire_seconds) +
                      pack_uint32(@salt) +
                      pack_uint16(@services.size)
-      @services.each { |service| signing_info << service.pack }
+      @services.each { |svc| signing_info << svc.pack }
 
       signature = OpenSSL::HMAC.digest("sha256", signing_key, signing_info)
-      content = pack_bytes(signature) + signing_info
+      content   = pack_bytes(signature) + signing_info
       compressed = Zlib::Deflate.deflate(content)
 
       "#{VERSION}#{Base64.strict_encode64(compressed)}"
@@ -137,10 +137,9 @@ module Agora
     private
 
     def signing_key
-      ts_bytes  = pack_uint32(@issue_ts)
-      salt_bytes = pack_uint32(@salt)
-      step1 = OpenSSL::HMAC.digest("sha256", ts_bytes, @app_certificate)
-      OpenSSL::HMAC.digest("sha256", salt_bytes, step1)
+      signing_ts = @issue_ts + @expire_seconds
+      step1 = OpenSSL::HMAC.digest("sha256", pack_uint32(signing_ts), @app_certificate)
+      OpenSSL::HMAC.digest("sha256", pack_uint32(@salt), step1)
     end
   end
 end

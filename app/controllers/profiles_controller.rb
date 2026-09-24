@@ -1,6 +1,26 @@
 class ProfilesController < ActionController::Base
   PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.previewtax".freeze
 
+  def assetlinks
+    default_shas = [
+      "FA:C6:17:45:DC:09:03:78:6F:B9:ED:E6:2A:96:2B:39:9F:73:48:F0:BB:6F:89:9B:83:32:66:75:91:03:3B:9C",
+      "1F:57:32:AE:80:BB:EC:14:38:38:D9:F5:58:52:30:6A:CB:79:12:61:B9:C9:72:A4:52:79:4D:A1:C6:2D:DE:C1"
+    ]
+    configured_shas = ENV.fetch("ANDROID_SHA256_FINGERPRINTS", "").split(",").map(&:strip).reject(&:blank?)
+    fingerprints = (default_shas + configured_shas).uniq
+
+    render json: [
+      {
+        relation: [ "delegate_permission/common.handle_all_urls" ],
+        target: {
+          namespace: "android_app",
+          package_name: "com.previewtax",
+          sha256_cert_fingerprints: fingerprints
+        }
+      }
+    ], status: :ok
+  end
+
   def show
     business_profile = BusinessProfile.find_by!(share_token: params[:share_token], approval_status: :approved)
     redirect_to public_expert_url(business_profile.account.uid, host: request.base_url), allow_other_host: true

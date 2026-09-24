@@ -4,6 +4,7 @@ Rails.application.routes.draw do
   ActiveAdmin.routes(self)
   get "p/:share_token", to: "profiles#show", as: :public_profile
   get "expert/:uid", to: "profiles#expert", as: :public_expert
+  get ".well-known/assetlinks.json", to: "profiles#assetlinks"
 
   namespace :api do
     namespace :v1 do

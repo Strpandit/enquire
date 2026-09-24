@@ -25,7 +25,7 @@ module Cashfree
       cf_environment == "PRODUCTION" ? "https://api.cashfree.com/pg" : "https://sandbox.cashfree.com/pg"
     end
 
-    def self.create_order(amount:, order_id:, customer:)
+    def self.create_order(amount:, order_id:, customer:, order_note: nil)
       api_url = URI.parse("#{base_url}/orders")
 
       phone_digits = customer.phone.to_s.gsub(/\D/, "")
@@ -39,7 +39,7 @@ module Cashfree
         order_id: order_id,
         order_amount: format("%.2f", amount.to_f),
         order_currency: "INR",
-        order_note: "Wallet top-up for account #{customer.id}",
+        order_note: order_note.presence || "Wallet top-up for account #{customer.id}",
         customer_details: {
           customer_id: "cust_#{customer.id}",
           customer_name: name_str,

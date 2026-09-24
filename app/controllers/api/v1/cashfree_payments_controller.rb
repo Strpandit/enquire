@@ -4,13 +4,28 @@ module Api
       skip_before_action :authorize_request, only: [ :webhook ]
 
       def create
-        amount = params.require(:amount).to_i
-        raise ActionController::ParameterMissing, "amount must be greater than 0" if amount <= 0
+        purpose = params[:purpose].to_s.presence || "wallet"
 
-        order_id = "wallet_#{current_account.id}_#{SecureRandom.hex(8)}"
-        checkout = Cashfree::PaymentService.create_order(amount: amount, order_id: order_id, customer: current_account)
+        if purpose == "verification"
+          amount = Account::VERIFICATION_PRICE
+          order_id = "verify_#{current_account.id}_#{SecureRandom.hex(8)}"
+          order_note = "Verification badge fee (180 days) for #{current_account.full_name}"
+        else
+          amount = params.require(:amount).to_i
+          raise ActionController::ParameterMissing, "amount must be greater than 0" if amount <= 0
 
-        render json: checkout.merge(order_id: order_id), status: :ok
+          order_id = "wallet_#{current_account.id}_#{SecureRandom.hex(8)}"
+          order_note = "Wallet top-up for account #{current_account.id}"
+        end
+
+        checkout = Cashfree::PaymentService.create_order(
+          amount: amount,
+          order_id: order_id,
+          customer: current_account,
+          order_note: order_note
+        )
+
+        render json: checkout.merge(order_id: order_id, purpose: purpose, amount: amount), status: :ok
       rescue => error
         render_service_error(error)
       end
@@ -27,7 +42,16 @@ module Api
         return head :ok unless event[:status] == "PAID"
 
         if (account_id = event[:account_id]) && (account = Account.find_by(id: account_id))
-          credit_wallet(account: account, order_id: event[:order_id], amount: event[:amount], source: "webhook")
+          if event[:order_id].to_s.start_with?("wallet_")
+            credit_wallet(account: account, order_id: event[:order_id], amount: event[:amount], source: "webhook")
+          elsif event[:order_id].to_s.start_with?("verify_")
+            ActivityLogger.log(
+              account: account,
+              event: "VERIFICATION_PAID",
+              title: "Verification payment of ₹#{event[:amount]} received",
+              metadata: { order_id: event[:order_id], amount: event[:amount] }
+            )
+          end
         end
 
         head :ok
@@ -47,11 +71,16 @@ module Api
         result = Cashfree::PaymentService.get_order_status(order_id: order_id)
 
         if result[:order_status] == "PAID"
-          credit_wallet(account: current_account, order_id: order_id, amount: result[:amount], source: "verify_endpoint", ip_address: request.remote_ip)
+          is_verification = order_id.to_s.start_with?("verify_")
+
+          unless is_verification
+            credit_wallet(account: current_account, order_id: order_id, amount: result[:amount], source: "verify_endpoint", ip_address: request.remote_ip)
+          end
 
           render json: {
             status: "success",
-            message: "Payment verified and credited successfully!",
+            purpose: is_verification ? "verification" : "wallet",
+            message: is_verification ? "Verification payment verified successfully!" : "Payment verified and credited successfully!",
             order_id: order_id,
             amount: result[:amount],
             wallet_balance: current_account.reload.wallet_balance

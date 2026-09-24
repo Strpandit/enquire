@@ -1,9 +1,9 @@
 # Brute-force / abuse protection. Enabled in all envs; disable in tests if noisy.
 class Rack::Attack
-  # Single-process deployment (Puma `workers 0`) → an in-memory counter store is
-  # enough and keeps this off the database. If you scale to multiple processes
-  # or instances, switch this to `Rails.cache` (Solid Cache).
-  Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
+  # Backed by Rails.cache (Solid Cache in production) so throttle counters
+  # survive Puma restarts and are shared across worker processes.
+  Rack::Attack.cache.store = Rails.cache
+
 
   ### Safelist ###############################################################
 

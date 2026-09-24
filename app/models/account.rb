@@ -105,7 +105,7 @@ class Account < ApplicationRecord
 
   def generate_password_reset_otp!
     update!(
-      otp_pin: rand(100_000..999_999).to_s,
+      otp_pin: SecureRandom.random_number(100_000..999_999).to_s,
       otp_sent_at: Time.current,
       reset_password_token_digest: nil,
       reset_password_sent_at: nil

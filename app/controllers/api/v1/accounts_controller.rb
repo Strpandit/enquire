@@ -24,6 +24,56 @@ module Api
       end
 
       def submit_verification
+        payment_method = params[:payment_method].to_s.presence || "wallet"
+        order_id = params[:order_id].to_s.presence
+        fee_required = !current_account.rejected? && !current_account.is_verified?
+
+        if fee_required
+          if payment_method == "cashfree"
+            raise ActionController::ParameterMissing, "order_id is required for online payment" if order_id.blank?
+
+            if Cashfree::PaymentService.extract_account_id(order_id) != current_account.id
+              return render json: { errors: [ "Payment order does not belong to your account" ] }, status: :forbidden
+            end
+
+            result = Cashfree::PaymentService.get_order_status(order_id: order_id)
+            unless result[:order_status] == "PAID"
+              return render json: { errors: [ "Verification payment was not completed (Status: #{result[:order_status]})" ] }, status: :unprocessable_entity
+            end
+
+            paid_amount = result[:amount].to_i
+            if paid_amount < Account::VERIFICATION_PRICE
+              return render json: { errors: [ "Paid amount (₹#{paid_amount}) is less than required verification fee (₹#{Account::VERIFICATION_PRICE})" ] }, status: :unprocessable_entity
+            end
+
+            ActivityLogger.log(
+              account: current_account,
+              event: "VERIFICATION_PAID_ONLINE",
+              title: "Paid ₹#{paid_amount} for Verification Badge via Cashfree (Order: #{order_id})",
+              metadata: { order_id: order_id, amount: paid_amount },
+              ip_address: request.remote_ip
+            )
+          elsif payment_method == "wallet"
+            current_account.with_lock do
+              if current_account.wallet_balance < Account::VERIFICATION_PRICE
+                return render json: {
+                  errors: [ "Insufficient wallet balance (₹#{current_account.wallet_balance} available, ₹#{Account::VERIFICATION_PRICE} required). Please pay via UPI/Cashfree or top up your wallet." ]
+                }, status: :unprocessable_entity
+              end
+
+              Wallets::LedgerService.debit!(
+                account: current_account,
+                amount: Account::VERIFICATION_PRICE,
+                description: "Verification Badge Fee (180 Days)",
+                metadata: { type: "verification_fee", cycle_days: Account::VERIFICATION_CYCLE_DAYS },
+                idempotency_key: "verification_fee_#{current_account.id}_#{Time.current.strftime('%Y%m%d%H%M')}"
+              )
+            end
+          else
+            return render json: { errors: [ "Invalid payment method" ] }, status: :unprocessable_entity
+          end
+        end
+
         current_account.assign_attributes(verification_params)
         current_account.verification_status = :pending
         current_account.verification_rejection_reason = nil
@@ -37,14 +87,16 @@ module Api
           notifiable: current_account,
           notification_type: "verification_submitted",
           title: "Verification submitted",
-          body: "Your verification documents are under review.",
+          body: "Your verification documents and payment have been received and are under review.",
           payload: { verification_status: current_account.verification_status }
         )
 
         render json: {
-          message: "Verification submitted successfully",
+          message: "Verification submitted successfully with payment!",
           account: AccountBlueprint.render_as_hash(current_account, include_private: true, viewer: current_account)
         }, status: :ok
+      rescue => error
+        render_service_error(error)
       end
 
       def change_password

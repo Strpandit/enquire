@@ -2,6 +2,8 @@ class Account < ApplicationRecord
   has_secure_password
   acts_as_paranoid
 
+  alias_attribute :phone_number, :phone
+
   OTP_EXPIRY_WINDOW = 5.minutes
   PASSWORD_RESET_TOKEN_WINDOW = 15.minutes
 

@@ -167,7 +167,7 @@
             </tr>
             <tr>
               <td style="padding: 6px 0; color: #64748b;">Phone:</td>
-              <td style="padding: 6px 0; color: #0f172a; font-weight: 600; text-align: right;"><%= @sender&.phone_number || "N/A" %></td>
+              <td style="padding: 6px 0; color: #0f172a; font-weight: 600; text-align: right;"><%= @sender&.phone.presence || "N/A" %></td>
             </tr>
             <tr>
               <td style="padding: 6px 0; color: #64748b;">Account ID:</td>
@@ -190,7 +190,7 @@
             </tr>
             <tr>
               <td style="padding: 6px 0; color: #64748b;">Phone:</td>
-              <td style="padding: 6px 0; color: #0f172a; font-weight: 600; text-align: right;"><%= @recipient&.phone_number || "N/A" %></td>
+              <td style="padding: 6px 0; color: #0f172a; font-weight: 600; text-align: right;"><%= @recipient&.phone.presence || "N/A" %></td>
             </tr>
             <tr>
               <td style="padding: 6px 0; color: #64748b;">Account ID:</td>

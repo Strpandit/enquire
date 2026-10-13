@@ -47,10 +47,26 @@ module Chat
             title: "Silently dropped message attempting to share contact details",
             metadata: {
               conversation_id: conversation.id,
+              recipient_id: recipient_account&.id,
+              recipient_name: recipient_account&.full_name,
               reasons: filter_result.reasons,
               preview: effective_content.to_s.truncate(100)
             }
           )
+
+          begin
+            AdminNotificationMailer.contact_sharing_alert(
+              sender_id: sender.id,
+              recipient_id: recipient_account&.id,
+              conversation_id: conversation.id,
+              session_id: chat_session.id,
+              content: effective_content,
+              reasons: filter_result.reasons,
+              shared_at_iso: Time.current.iso8601
+            ).deliver_later
+          rescue StandardError => mail_error
+            Rails.logger.error("[Chat::MessageService] Failed to enqueue admin alert email: #{mail_error.message}")
+          end
 
           return ChatMessage.new(
             id: (Time.current.to_f * 1000).to_i,

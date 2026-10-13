@@ -120,7 +120,7 @@
         </div>
 
         <p>
-          <a href="<%= ENV['LOGIN_URL'] || 'http://localhost:3001/auth/login' %>" class="button">
+          <a href="<%= ENV['LOGIN_URL'].presence || ENV['APP_URL'].presence || 'https://previewtax.com' %>" class="button">
             Access Your Account →
           </a>
         </p>

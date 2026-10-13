@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        background: #f8fafc;
+        margin: 0;
+        padding: 20px;
+        color: #1e293b;
+      }
+      .container {
+        max-width: 640px;
+        margin: 0 auto;
+        background: #ffffff;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        border: 1px solid #e2e8f0;
+      }
+      .header {
+        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+        color: #ffffff;
+        padding: 24px;
+        text-align: center;
+      }
+      .header h2 {
+        margin: 0 0 6px 0;
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: -0.3px;
+      }
+      .header p {
+        margin: 0;
+        font-size: 14px;
+        opacity: 0.9;
+      }
+      .content {
+        padding: 28px 24px;
+      }
+      .badge-alert {
+        display: inline-block;
+        background: #fef2f2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 20px;
+      }
+      .card {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+      .card-title {
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #64748b;
+        margin-bottom: 10px;
+      }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 0;
+        border-bottom: 1px solid #edf2f7;
+        font-size: 14px;
+      }
+      .row:last-child {
+        border-bottom: none;
+      }
+      .row-label {
+        color: #64748b;
+        font-weight: 500;
+      }
+      .row-value {
+        color: #0f172a;
+        font-weight: 600;
+        text-align: right;
+      }
+      .message-box {
+        background: #fff1f2;
+        border: 1px solid #fecdd3;
+        border-left: 4px solid #e11d48;
+        border-radius: 6px;
+        padding: 14px;
+        margin: 18px 0;
+      }
+      .message-box-title {
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #be123c;
+        margin-bottom: 8px;
+      }
+      .message-text {
+        font-family: monospace;
+        font-size: 14px;
+        color: #881337;
+        white-space: pre-wrap;
+        word-break: break-word;
+        line-height: 1.5;
+        background: #ffffff;
+        padding: 10px;
+        border-radius: 4px;
+        border: 1px solid #ffe4e6;
+      }
+      .reasons-list {
+        margin: 8px 0 0 0;
+        padding-left: 20px;
+        color: #991b1b;
+        font-size: 13px;
+      }
+      .reasons-list li {
+        margin-bottom: 4px;
+      }
+      .notice {
+        background: #f0fdf4;
+        border-left: 4px solid #16a34a;
+        padding: 12px 14px;
+        border-radius: 4px;
+        font-size: 13px;
+        color: #166534;
+        margin-top: 20px;
+        line-height: 1.5;
+      }
+      .footer {
+        background: #f1f5f9;
+        padding: 16px;
+        text-align: center;
+        font-size: 12px;
+        color: #64748b;
+        border-top: 1px solid #e2e8f0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h2>🚨 Contact Sharing Policy Alert</h2>
+        <p>A user attempted to share personal contact details in chat</p>
+      </div>
+
+      <div class="content">
+        <div class="badge-alert">
+          Action Taken: Message was silently blocked from chat & logged for security audit.
+        </div>
+
+        <!-- Sender Card -->
+        <div class="card">
+          <div class="card-title">Shared By (Sender)</div>
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Name:</td>
+              <td style="padding: 6px 0; color: #0f172a; font-weight: 600; text-align: right;"><%= @sender&.full_name || "Unknown" %></td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Email:</td>
+              <td style="padding: 6px 0; color: #0f172a; font-weight: 600; text-align: right;"><%= @sender&.email || "N/A" %></td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Phone:</td>
+              <td style="padding: 6px 0; color: #0f172a; font-weight: 600; text-align: right;"><%= @sender&.phone_number || "N/A" %></td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Account ID:</td>
+              <td style="padding: 6px 0; color: #0f172a; font-weight: 600; text-align: right;">#<%= @sender&.id %></td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Recipient Card -->
+        <div class="card">
+          <div class="card-title">Shared With (Recipient)</div>
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Name:</td>
+              <td style="padding: 6px 0; color: #0f172a; font-weight: 600; text-align: right;"><%= @recipient&.full_name || "Unknown" %></td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Email:</td>
+              <td style="padding: 6px 0; color: #0f172a; font-weight: 600; text-align: right;"><%= @recipient&.email || "N/A" %></td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Phone:</td>
+              <td style="padding: 6px 0; color: #0f172a; font-weight: 600; text-align: right;"><%= @recipient&.phone_number || "N/A" %></td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Account ID:</td>
+              <td style="padding: 6px 0; color: #0f172a; font-weight: 600; text-align: right;">#<%= @recipient&.id %></td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Event Details -->
+        <div class="card">
+          <div class="card-title">Event Information</div>
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Time:</td>
+              <td style="padding: 6px 0; color: #0f172a; font-weight: 600; text-align: right;"><%= @shared_at %></td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Conversation ID:</td>
+              <td style="padding: 6px 0; color: #0f172a; font-weight: 600; text-align: right;">#<%= @conversation_id %></td>
+            </tr>
+            <% if @session_id.present? %>
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Session ID:</td>
+              <td style="padding: 6px 0; color: #0f172a; font-weight: 600; text-align: right;">#<%= @session_id %></td>
+            </tr>
+            <% end %>
+          </table>
+        </div>
+
+        <!-- Shared Message Box -->
+        <div class="message-box">
+          <div class="message-box-title">Attempted Message Content:</div>
+          <div class="message-text"><%= @content %></div>
+
+          <% if @reasons.any? %>
+            <div style="margin-top: 10px;">
+              <strong style="font-size: 12px; color: #991b1b; text-transform: uppercase;">Detected Violations:</strong>
+              <ul class="reasons-list">
+                <% @reasons.each do |reason| %>
+                  <li><%= reason %></li>
+                <% end %>
+              </ul>
+            </div>
+          <% end %>
+        </div>
+
+        <div class="notice">
+          🛡️ <strong>Security Filter Status:</strong> The message above was prevented from reaching the other participant in order to keep communication on-platform and protect revenue. The sender received a masked simulation without recipient delivery.
+        </div>
+      </div>
+
+      <div class="footer">
+        <p style="margin: 0 0 4px 0;">PreviewTax Automated Security System</p>
+        <p style="margin: 0;">© <%= Time.current.year %> Preview Tax. All rights reserved.</p>
+      </div>
+    </div>
+  </body>
+</html>

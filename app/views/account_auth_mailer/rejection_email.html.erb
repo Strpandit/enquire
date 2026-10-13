@@ -116,7 +116,7 @@
         </p>
 
         <p>
-          <a href="<%= ENV['SIGNUP_URL'] || 'http://localhost:3001/auth/signup' %>" class="button">
+          <a href="<%= ENV['SIGNUP_URL'].presence || ENV['APP_URL'].presence || 'https://previewtax.com' %>" class="button">
             Update Your Application →
           </a>
         </p>

@@ -11,7 +11,8 @@ module Api
             conversations,
             viewer: current_account,
             unread_counts: unread_counts_for(conversations),
-            active_sessions: active_sessions_for(conversations)
+            active_sessions: active_sessions_for(conversations),
+            presence: presence_for(conversations)
           ),
           meta: pagination_meta(conversations)
         }, status: :ok
@@ -62,20 +63,27 @@ module Api
         conversation_ids = Array(conversations).map(&:id)
         return {} if conversation_ids.empty?
 
-        messages_by_conversation = ChatMessage.where(chat_conversation_id: conversation_ids)
-                                              .where.not(sender_account_id: current_account.id)
-                                              .pluck(:chat_conversation_id, :created_at)
-                                              .group_by(&:first)
-
-        Array(conversations).each_with_object({}) do |conversation, counts|
-          cutoff = conversation.customer_account_id == current_account.id ? conversation.last_read_by_customer_at : conversation.last_read_by_business_at
-          messages = messages_by_conversation.fetch(conversation.id, [])
-          counts[conversation.id] = if cutoff.present?
-            messages.count { |_conversation_id, created_at| created_at > cutoff }
-          else
-            messages.size
-          end
+        counts = Hash.new(0)
+        Array(conversations).group_by do |conversation|
+          conversation.customer_account_id == current_account.id ? conversation.last_read_by_customer_at : conversation.last_read_by_business_at
+        end.each do |cutoff, group|
+          scope = ChatMessage.where(chat_conversation_id: group.map(&:id))
+                             .where.not(sender_account_id: current_account.id)
+          scope = scope.where("created_at > ?", cutoff) if cutoff.present?
+          scope.group(:chat_conversation_id).count.each { |id, count| counts[id] = count }
         end
+        conversation_ids.index_with { |id| counts[id] }
+      end
+
+      def presence_for(conversations)
+        account_ids = Array(conversations).flat_map do |conversation|
+          [ conversation.customer_account_id, conversation.business_profile.account_id ]
+        end.uniq
+        return {} if account_ids.empty?
+
+        keys = account_ids.index_by { |id| "account_presence:#{id}" }
+        cached = Rails.cache.read_multi(*keys.keys)
+        account_ids.index_with { |id| cached["account_presence:#{id}"] == true }
       end
 
       def active_sessions_for(conversations)

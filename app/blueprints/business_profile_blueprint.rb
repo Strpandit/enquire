@@ -53,6 +53,6 @@ class BusinessProfileBlueprint < Blueprinter::Base
 
   association :categories, blueprint: CategoryBlueprint
   association :schedules, blueprint: ScheduleBlueprint
-  association :reviews, blueprint: ReviewBlueprint
+  association :reviews, blueprint: ReviewBlueprint, if: ->(_field_name, _bp, options) { options.fetch(:include_reviews, true) }
   association :account, blueprint: AccountBlueprint, if: ->(_field_name, _bp, options) { options[:include_account] }
 end

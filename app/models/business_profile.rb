@@ -43,12 +43,13 @@ class BusinessProfile < ApplicationRecord
 
   def currently_available?(now: Time.current.in_time_zone(Time.zone))
     return false unless is_available?
-    return true if schedules.where(availability_type: "always").exists?
 
-    custom_schedules = if schedules.loaded?
-      schedules.select(&:custom?)
+    if schedules.loaded?
+      return true if schedules.any? { |schedule| schedule.availability_type.to_s == "always" }
+      custom_schedules = schedules.select(&:custom?)
     else
-      schedules.where(availability_type: "custom")
+      return true if schedules.where(availability_type: "always").exists?
+      custom_schedules = schedules.where(availability_type: "custom")
     end
 
     return true if custom_schedules.blank?

@@ -8,7 +8,7 @@ module Api
       before_action :ensure_approved_for_favorite!, only: [ :favorite, :unfavorite ]
 
       def index
-        business_profiles = BusinessProfile.includes(account: { profile_pic_attachment: :blob }, categories: {}, schedules: {}, reviews: { account: {} })
+        business_profiles = BusinessProfile.includes(account: { profile_pic_attachment: :blob }, categories: {}, schedules: {})
         business_profiles = business_profiles.where(approval_status: :approved)
         business_profiles = business_profiles.where.not(account_id: @current_account.id) if @current_account.present?
         business_profiles = apply_search(business_profiles)
@@ -18,7 +18,7 @@ module Api
           favorited_ids = current_account ? current_account.favorites.where(business_profile_id: business_profiles.map(&:id)).pluck(:business_profile_id).to_set : Set.new
 
           render json: {
-            business_profiles: BusinessProfileBlueprint.render_as_hash(business_profiles, host: request.base_url, viewer: current_account, include_account: true, favorited_ids: favorited_ids),
+            business_profiles: BusinessProfileBlueprint.render_as_hash(business_profiles, host: request.base_url, viewer: current_account, include_account: true, include_reviews: false, favorited_ids: favorited_ids),
             meta: pagination_meta(business_profiles)
           }, status: :ok
         else

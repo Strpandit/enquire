@@ -7,15 +7,11 @@ module Api
       def index
         categories = Category.order(:name)
         categories = categories.where("LOWER(name) LIKE ?", "%#{params[:q].to_s.downcase.strip}%") if params[:q].present?
-        categories = categories.page(params[:page]).per(per_page)
 
-        if categories.present?
-          cache_key = [ "categories/index", params[:q].to_s.downcase.strip, params[:page], per_page, Category.maximum(:updated_at)&.to_i ].join("/")
+        if categories.exists?
+          cache_key = [ "categories/index/all", params[:q].to_s.downcase.strip, Category.maximum(:updated_at)&.to_i, Category.count ].join("/")
           payload = Rails.cache.fetch(cache_key, expires_in: 1.hour) do
-            {
-              categories: CategoryBlueprint.render_as_hash(categories),
-              meta: pagination_meta(categories)
-            }
+            { categories: CategoryBlueprint.render_as_hash(categories.to_a) }
           end
           render json: payload, status: :ok
         else

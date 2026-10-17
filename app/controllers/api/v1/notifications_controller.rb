@@ -2,7 +2,7 @@ module Api
   module V1
     class NotificationsController < BaseController
       def index
-        notifications = current_account.received_notifications.for_inbox.recent_first.page(params[:page]).per(per_page)
+        notifications = current_account.visible_notifications.for_inbox.recent_first.page(params[:page]).per(per_page)
         render json: {
           notifications: NotificationBlueprint.render_as_hash(notifications),
           meta: pagination_meta(notifications),

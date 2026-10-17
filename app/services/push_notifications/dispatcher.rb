@@ -5,6 +5,14 @@ module PushNotifications
     end
 
     def deliver!
+      if notification.recipient_account.notification_muted?(notification.notification_type)
+        Rails.logger.info(
+          "[PushNotifications] skipped notification_id=#{notification.id} type=#{notification.notification_type} — " \
+          "category muted by account_id=#{notification.recipient_account_id}"
+        )
+        return false
+      end
+
       if installations.empty?
         Rails.logger.warn(
           "[PushNotifications] no active device_installations for account_id=#{notification.recipient_account_id} " \

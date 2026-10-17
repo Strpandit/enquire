@@ -70,6 +70,8 @@ Rails.application.routes.draw do
       post "device_monitoring/activity", to: "device_monitoring#activity"
       get "activity_logs", to: "device_monitoring#user_logs"
       resources :wallet_transactions, only: [ :index ]
+      get "notification_preferences", to: "notification_preferences#show"
+      patch "notification_preferences", to: "notification_preferences#update"
       resources :notifications, only: [ :index, :destroy ] do
         collection do
           get :unread_count

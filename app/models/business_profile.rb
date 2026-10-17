@@ -1,4 +1,6 @@
 class BusinessProfile < ApplicationRecord
+  include ExpertRanking
+
   belongs_to :account
 
   has_many :reviews, dependent: :destroy

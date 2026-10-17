@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_09_18_100000) do
+ActiveRecord::Schema[8.0].define(version: 2026_10_17_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -41,6 +41,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_09_18_100000) do
     t.string "uid"
     t.datetime "last_seen_at"
     t.integer "earnings_balance", default: 0, null: false
+    t.jsonb "notification_preferences", default: {}, null: false
     t.index "lower((email)::text)", name: "index_accounts_on_lower_email", unique: true
     t.index "lower((username)::text)", name: "index_accounts_on_lower_username", unique: true, where: "(username IS NOT NULL)"
     t.index ["earnings_balance"], name: "index_accounts_on_earnings_balance"

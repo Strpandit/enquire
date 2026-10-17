@@ -163,18 +163,31 @@ class Account < ApplicationRecord
   end
 
   def unread_notifications_count
-    received_notifications.unread.count
+    visible_notifications.unread.count
+  end
+
+  def muted_notification_categories
+    Notification::CATEGORIES.select { |category| notification_preferences.to_h[category] == false }
+  end
+
+  def notification_muted?(type)
+    return false if Notification::ALWAYS_DELIVERED_TYPES.include?(type.to_s)
+
+    muted_notification_categories.include?(Notification.category_for(type))
+  end
+
+  def visible_notifications
+    muted = muted_notification_categories
+    return received_notifications if muted.empty?
+
+    muted_types = received_notifications.distinct.pluck(:notification_type).select { |type| notification_muted?(type) }
+    muted_types.empty? ? received_notifications : received_notifications.where.not(notification_type: muted_types)
   end
 
   def profile_pic_details
     attachment_details_for(profile_pic)
   end
 
-  # A right-sized avatar URL instead of the full original upload. On Cloudinary
-  # (production) this generates an on-the-fly resized/cropped CDN URL; on other
-  # services (local disk in dev/test) the size options are simply ignored and a
-  # normal URL is returned. expires_in: nil avoids the default short-lived signed
-  # URL some services would otherwise generate.
   AVATAR_THUMB_SIZE = 300
 
   def profile_pic_url(width: AVATAR_THUMB_SIZE, height: AVATAR_THUMB_SIZE)

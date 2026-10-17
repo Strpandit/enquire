@@ -8,18 +8,15 @@ module Api
       before_action :ensure_approved_for_favorite!, only: [ :favorite, :unfavorite ]
 
       def index
-        business_profiles = BusinessProfile.includes(account: { profile_pic_attachment: :blob }, categories: {}, schedules: {})
-        business_profiles = business_profiles.where(approval_status: :approved)
-        business_profiles = business_profiles.where.not(account_id: @current_account.id) if @current_account.present?
-        business_profiles = apply_search(business_profiles)
-        business_profiles = business_profiles.order(avg_rating: :desc, created_at: :desc).page(params[:page]).per(per_page)
+        ranked_page = cached_ranked_page
+        business_profiles = load_in_order(ranked_page[:ids])
 
         if business_profiles.present?
           favorited_ids = current_account ? current_account.favorites.where(business_profile_id: business_profiles.map(&:id)).pluck(:business_profile_id).to_set : Set.new
 
           render json: {
             business_profiles: BusinessProfileBlueprint.render_as_hash(business_profiles, host: request.base_url, viewer: current_account, include_account: true, include_reviews: false, favorited_ids: favorited_ids),
-            meta: pagination_meta(business_profiles)
+            meta: ranked_page[:meta]
           }, status: :ok
         else
           render json: { message: "No Experts found" }, status: :not_found
@@ -296,24 +293,71 @@ module Api
         render json: { errors: [ "Only approved business profiles can be favorited" ] }, status: :unprocessable_entity
       end
 
+      RANKED_PAGE_TTL = 30.seconds
+
+      # The expensive part of the expert list is the live ranking query (verified /
+      # consultations / rating subqueries + count). Cache just the ordered ids and
+      # page meta for a short time; records, viewer-specific favorite flags and live
+      # availability are still rendered fresh on every request.
+      def cached_ranked_page
+        own_account_id = own_expert_account_id
+        key = [
+          "experts/index/v1",
+          params[:q].to_s.downcase.strip,
+          Array(params[:category_ids]).join(","),
+          params[:sort].to_s,
+          params[:page].to_i,
+          per_page,
+          own_account_id,
+          BusinessProfile.maximum(:updated_at)&.to_f
+        ].join("/")
+
+        Rails.cache.fetch(key, expires_in: RANKED_PAGE_TTL) do
+          scope = BusinessProfile.where(approval_status: :approved)
+          scope = scope.where.not(account_id: own_account_id) if own_account_id
+          page = apply_search(scope).ranked(params[:sort]).page(params[:page]).per(per_page)
+          { meta: pagination_meta(page), ids: page.pluck(:id) }
+        end
+      end
+
+      # Viewers who own an expert profile never see themselves in the list.
+      def own_expert_account_id
+        return nil if @current_account.blank?
+
+        BusinessProfile.exists?(account_id: @current_account.id) ? @current_account.id : nil
+      end
+
+      def load_in_order(ids)
+        return [] if ids.blank?
+
+        records = BusinessProfile.includes(account: { profile_pic_attachment: :blob }, categories: {}, schedules: {})
+                                 .where(id: ids).index_by(&:id)
+        ids.filter_map { |id| records[id] }
+      end
+
       def apply_search(scope)
         if params[:q].present?
           query = "%#{params[:q].to_s.downcase.strip}%"
-          scope = scope.joins(:account).where(
+          scope = scope.where(
             "business_profiles.business_name ILIKE :query
             OR business_profiles.city ILIKE :query
             OR business_profiles.state ILIKE :query
-            OR accounts.full_name ILIKE :query",
-            query: "%#{query}%"
+            OR business_profiles.account_id IN (SELECT id FROM accounts WHERE full_name ILIKE :query AND deleted_at IS NULL)
+            OR business_profiles.id IN (
+              SELECT bpc.business_profile_id FROM business_profile_categories bpc
+              JOIN categories c ON c.id = bpc.category_id
+              WHERE c.name ILIKE :query
+            )",
+            query: query
           )
         end
 
         if params[:category_ids].present?
           category_ids = Array(params[:category_ids]).flat_map { |value| value.to_s.split(",") }.map(&:to_i).uniq
-          scope = scope.joins(:business_profile_categories).where(business_profile_categories: { category_id: category_ids }) if category_ids.any?
+          scope = scope.where(id: BusinessProfileCategory.where(category_id: category_ids).select(:business_profile_id)) if category_ids.any?
         end
 
-        scope.distinct
+        scope
       end
 
       def business_profile_params

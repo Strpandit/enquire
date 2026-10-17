@@ -5,6 +5,20 @@ class Notification < ApplicationRecord
 
   validates :notification_type, :title, :body, presence: true
 
+  CATEGORIES = %w[chat call wallet verification business other].freeze
+  ALWAYS_DELIVERED_TYPES = %w[incoming_call].freeze
+
+  def self.category_for(type)
+    t = type.to_s.downcase
+    return "chat" if t.start_with?("chat") || t == "message"
+    return "call" if t.include?("call")
+    return "wallet" if t.start_with?("wallet", "withdrawal") || t.include?("payment")
+    return "verification" if t.start_with?("verification")
+    return "business" if t.start_with?("business")
+
+    "other"
+  end
+
   scope :recent_first, -> { order(updated_at: :desc, created_at: :desc) }
   scope :unread, -> { where(read_at: nil) }
   scope :for_inbox, -> { includes(:actor_account) }

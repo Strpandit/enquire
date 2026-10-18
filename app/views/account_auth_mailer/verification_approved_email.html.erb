@@ -1,0 +1,10 @@
+<div style="font-family:'Segoe UI',Tahoma,Arial,sans-serif;max-width:600px;margin:0 auto;color:#222;">
+  <div style="background:#c2410c;color:#fff;padding:24px;border-radius:8px 8px 0 0;text-align:center;">
+    <h2 style="margin:0;">Your verification badge is active</h2>
+  </div>
+  <div style="border:1px solid #e5e7eb;border-top:0;padding:24px;border-radius:0 0 8px 8px;">
+    <p>Hi <strong><%= @user.full_name %></strong>,</p>
+    <p>Your verification has been approved. Your badge is active from <strong><%= @verified_at.strftime("%B %d, %Y") %></strong> until <strong><%= @expires_at.strftime("%B %d, %Y") %></strong> (<%= Account::VERIFICATION_CYCLE_DAYS %> days).</p>
+    <p>Regards,<br><strong>Preview Tax Team</strong></p>
+  </div>
+</div>

@@ -3,8 +3,8 @@ module Api
     class BusinessProfilesController < BaseController
       skip_before_action :authorize_request, only: [ :index, :show, :show_by_uid, :qr_code ]
       before_action :assign_optional_current_account, only: [ :index, :show, :show_by_uid, :qr_code ]
-      before_action :set_business_profile, only: [ :show, :update, :destroy, :qr_code, :favorite, :unfavorite ]
-      before_action :ensure_owner!, only: [ :update, :destroy ]
+      before_action :set_business_profile, only: [ :show, :update, :destroy, :qr_code, :favorite, :unfavorite, :submit ]
+      before_action :ensure_owner!, only: [ :update, :destroy, :submit ]
       before_action :ensure_approved_for_favorite!, only: [ :favorite, :unfavorite ]
 
       def index
@@ -38,55 +38,102 @@ module Api
           return render json: { errors: [ "Business profile already exists" ] }, status: :unprocessable_entity
         end
 
+        # Created as a draft: nothing is sent to the admin (or emailed to the
+        # expert) until every onboarding step is done and #submit is called.
         business_profile = current_account.build_business_profile(business_profile_params)
-        business_profile.approval_status = :pending
+        business_profile.approval_status = :draft
         business_profile.rejection_reason = nil
         business_profile.approved_at = nil
         business_profile.save!
         current_account.update!(is_business: false)
 
-        AccountAuthMailer.welcome_email(current_account).deliver_later if current_account.email.present?
-        Notifications::Creator.call(
-          recipient: current_account,
-          actor: current_account,
-          notifiable: business_profile,
-          notification_type: "business_profile_submitted",
-          title: "Business profile submitted",
-          body: "Your business profile has been sent for admin review.",
-          payload: { business_profile_id: business_profile.id, approval_status: business_profile.approval_status }
-        )
-
         render json: {
-          message: "Business profile submitted for approval",
+          message: "Business profile saved as draft. Complete the remaining steps to submit it for approval.",
           business_profile: BusinessProfileBlueprint.render_as_hash(business_profile, include_account: true)
         }, status: :created
       end
 
       def update
-        was_rejected = @business_profile.rejected?
+        # A rejected profile is NOT auto-resubmitted on edit any more; the
+        # expert must finish editing and call #submit explicitly.
+        #
+        # Categories, fees, schedule and availability can be edited freely.
+        # Changing business details or GST info on a live (approved/pending)
+        # profile sends it back to admin review.
         @business_profile.assign_attributes(business_profile_params)
-        if was_rejected
+        needs_review = (@business_profile.approved? || @business_profile.pending?) && review_triggering_change?
+        if needs_review
           @business_profile.approval_status = :pending
-          @business_profile.rejection_reason = nil
           @business_profile.approved_at = nil
+          @business_profile.rejection_reason = nil
         end
         @business_profile.save!
 
-        if was_rejected
+        if needs_review
           Notifications::Creator.call(
             recipient: current_account,
             actor: current_account,
             notifiable: @business_profile,
             notification_type: "business_profile_resubmitted",
-            title: "Business profile resubmitted",
-            body: "Your updated business profile is back in review.",
+            title: "Business profile sent for re-approval",
+            body: "You changed your business details, so your profile is back in admin review.",
             payload: { business_profile_id: @business_profile.id, approval_status: @business_profile.approval_status }
           )
+          deliver_review_mails(@business_profile, "updated")
         end
 
         render json: {
           message: "Business profile updated successfully",
           business_profile: BusinessProfileBlueprint.render_as_hash(@business_profile, include_account: true)
+        }, status: :ok
+      end
+
+      # POST /business_profiles/:id/submit — final onboarding step.
+      def submit
+        profile = @business_profile
+
+        if profile.approved? || profile.pending?
+          return render json: {
+            message: "Business profile is already #{profile.approval_status}",
+            business_profile: BusinessProfileBlueprint.render_as_hash(profile, include_account: true)
+          }, status: :ok
+        end
+
+        missing = profile.missing_onboarding_steps
+        if missing.any?
+          return render json: { errors: [ "Please complete: #{missing.join(', ')}" ], missing_steps: missing }, status: :unprocessable_entity
+        end
+
+        resubmission = profile.rejected?
+        profile.update!(approval_status: :pending, rejection_reason: nil, approved_at: nil)
+
+        if resubmission
+          Notifications::Creator.call(
+            recipient: current_account,
+            actor: current_account,
+            notifiable: profile,
+            notification_type: "business_profile_resubmitted",
+            title: "Business profile resubmitted",
+            body: "Your updated business profile is back in review.",
+            payload: { business_profile_id: profile.id, approval_status: profile.approval_status }
+          )
+        else
+          Notifications::Creator.call(
+            recipient: current_account,
+            actor: current_account,
+            notifiable: profile,
+            notification_type: "business_profile_submitted",
+            title: "Business profile submitted",
+            body: "Your business profile has been sent for admin review.",
+            payload: { business_profile_id: profile.id, approval_status: profile.approval_status }
+          )
+        end
+
+        deliver_review_mails(profile, resubmission ? "resubmitted" : "new")
+
+        render json: {
+          message: "Business profile submitted for approval",
+          business_profile: BusinessProfileBlueprint.render_as_hash(profile, include_account: true)
         }, status: :ok
       end
 
@@ -170,6 +217,34 @@ module Api
       end
 
       private
+
+      # Emails the expert (confirmation) and every admin (review request).
+      # Mail failures must never break the API response.
+      def deliver_review_mails(profile, kind)
+        AccountAuthMailer.profile_submitted_email(current_account, kind).deliver_later if current_account.email.present?
+        AdminNotificationMailer.business_profile_review_request(business_profile_id: profile.id, kind: kind).deliver_later
+      rescue StandardError => e
+        Rails.logger.error("[BusinessProfile] review mail enqueue failed: #{e.class}: #{e.message}")
+      end
+
+      REVIEW_TRIGGER_FIELDS = %w[
+        business_name business_address bio about pincode state city
+        gst_enabled gst_number
+      ].freeze
+
+      # True when the pending (unsaved) assignment touched business details or GST data.
+      def review_triggering_change?
+        return true if params.dig(:business_profile, :gst_certificate).present?
+
+        # gst_number is normalised before validation, so compare against the normalised value.
+        @business_profile.gst_number = @business_profile.gst_number.to_s.strip.upcase.presence
+        # nil vs "" and surrounding whitespace are not real edits.
+        (@business_profile.changed & REVIEW_TRIGGER_FIELDS).any? do |field|
+          before = @business_profile.attribute_in_database(field)
+          after = @business_profile[field]
+          before.is_a?(String) || after.is_a?(String) ? before.to_s.strip != after.to_s.strip : before != after
+        end
+      end
 
       def build_dashboard_payload(current_account, bp)
         acc_id = current_account.id

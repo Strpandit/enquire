@@ -1,7 +1,8 @@
 ActiveAdmin.register BusinessProfile do
   actions :index, :show, :destroy
 
-  action_item :approve_profile, only: :show, if: proc { resource.pending? || resource.rejected? } do
+  # Drafts (expert still filling onboarding) can never be approved/rejected.
+  action_item :approve_profile, only: :show, if: proc { (resource.pending? || resource.rejected?) && resource.ready_for_review? } do
     link_to "Approve Profile", approve_admin_business_profile_path(resource), method: :patch
   end
 
@@ -10,6 +11,11 @@ ActiveAdmin.register BusinessProfile do
   end
 
   member_action :approve, method: :patch do
+    unless (resource.pending? || resource.rejected?) && resource.ready_for_review?
+      reason = resource.draft? ? "the expert has not submitted it yet" : "it is incomplete (#{resource.missing_onboarding_steps.join(', ')})"
+      next redirect_to resource_path, alert: "Cannot approve: #{reason}."
+    end
+
     ActiveRecord::Base.transaction do
       resource.update!(approval_status: :approved, approved_at: Time.current, rejection_reason: nil)
       resource.account.update!(is_business: true)
@@ -27,6 +33,10 @@ ActiveAdmin.register BusinessProfile do
   end
 
   member_action :reject, method: :patch do
+    unless resource.pending?
+      next redirect_to resource_path, alert: "Only profiles awaiting review can be rejected."
+    end
+
     ActiveRecord::Base.transaction do
       resource.update!(approval_status: :rejected, approved_at: nil, rejection_reason: "Rejected by admin")
       resource.account.update!(is_business: false)

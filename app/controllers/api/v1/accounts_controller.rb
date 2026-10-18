@@ -27,6 +27,7 @@ module Api
         payment_method = params[:payment_method].to_s.presence || "wallet"
         order_id = params[:order_id].to_s.presence
         fee_required = !current_account.rejected? && !current_account.is_verified?
+        payment_info = { amount: 0, method: nil, reference: nil, paid_at: nil }
 
         if fee_required
           if payment_method == "cashfree"
@@ -46,6 +47,8 @@ module Api
               return render json: { errors: [ "Paid amount (₹#{paid_amount}) is less than required verification fee (₹#{Account::VERIFICATION_PRICE})" ] }, status: :unprocessable_entity
             end
 
+            payment_info = { amount: paid_amount, method: "cashfree", reference: order_id, paid_at: Time.current.iso8601 }
+
             ActivityLogger.log(
               account: current_account,
               event: "VERIFICATION_PAID_ONLINE",
@@ -61,13 +64,15 @@ module Api
                 }, status: :unprocessable_entity
               end
 
-              Wallets::LedgerService.debit!(
+              ledger_result = Wallets::LedgerService.debit!(
                 account: current_account,
                 amount: Account::VERIFICATION_PRICE,
                 description: "Verification Badge Fee (180 Days)",
                 metadata: { type: "verification_fee", cycle_days: Account::VERIFICATION_CYCLE_DAYS },
                 idempotency_key: "verification_fee_#{current_account.id}_#{Time.current.strftime('%Y%m%d%H%M')}"
               )
+              txn = ledger_result.transaction
+              payment_info = { amount: Account::VERIFICATION_PRICE, method: "wallet", reference: txn ? "WALLET-TXN-#{txn.id}" : nil, paid_at: (txn&.created_at || Time.current).iso8601 }
             end
           else
             return render json: { errors: [ "Invalid payment method" ] }, status: :unprocessable_entity
@@ -90,6 +95,8 @@ module Api
           body: "Your verification documents and payment have been received and are under review.",
           payload: { verification_status: current_account.verification_status }
         )
+
+        deliver_verification_mails(payment_info)
 
         render json: {
           message: "Verification submitted successfully with payment!",
@@ -142,6 +149,15 @@ module Api
 
         permitted.delete(:username) if permitted[:username].to_s.strip.blank?
         permitted
+      end
+
+      # Emails the expert (confirmation) and admins (review request with payment details).
+      def deliver_verification_mails(payment_info)
+        info = payment_info.transform_keys(&:to_s)
+        AccountAuthMailer.verification_submitted_email(current_account, info).deliver_later if current_account.email.present?
+        AdminNotificationMailer.verification_review_request(account_id: current_account.id, payment: info).deliver_later
+      rescue StandardError => e
+        Rails.logger.error("[Verification] mail enqueue failed: #{e.class}: #{e.message}")
       end
 
       def verification_params

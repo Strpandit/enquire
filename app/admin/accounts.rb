@@ -1,33 +1,46 @@
 ActiveAdmin.register Account do
   actions :index, :show, :destroy
 
-  action_item :approve_verification, only: :show, if: proc { resource.pending? || resource.rejected? || !resource.is_verified? } do
+  # Verification can only be decided once the user has actually submitted it
+  # (documents + fee are collected in Api::V1::AccountsController#submit_verification,
+  # which is the only place that sets verification_status = pending).
+  action_item :approve_verification, only: :show, if: proc { resource.pending? } do
     link_to "Approve Verification", approve_verification_admin_account_path(resource), method: :patch
   end
 
-  action_item :reject_verification, only: :show, if: proc { resource.pending? || resource.approved? } do
+  action_item :reject_verification, only: :show, if: proc { resource.pending? } do
     link_to "Reject Verification", reject_verification_admin_account_path(resource), method: :patch
   end
 
   member_action :approve_verification, method: :patch do
+    unless resource.pending?
+      next redirect_to resource_path, alert: "Cannot approve: this user has not submitted verification (documents + payment)."
+    end
+
     resource.update!(
       verification_status: :approved,
       is_verified: true,
       verified_at: Time.current,
       verification_rejection_reason: nil
     )
+    # The 180-day badge window starts NOW (admin approval), not at payment time.
+    AccountAuthMailer.verification_approved_email(resource, resource.verified_at, resource.verification_expires_at).deliver_later if resource.email.present?
     Notifications::Creator.call(
       recipient: resource,
       notifiable: resource,
       notification_type: "verification_approved",
       title: "Verification approved",
-      body: "Your account verification has been approved.",
+      body: "Your account verification has been approved. Your badge is valid for #{Account::VERIFICATION_CYCLE_DAYS} days from today.",
       payload: { verification_status: resource.verification_status, is_verified: true }
     )
     redirect_to resource_path, notice: "Account verification approved & verified badge enabled!"
   end
 
   member_action :reject_verification, method: :patch do
+    unless resource.pending?
+      next redirect_to resource_path, alert: "Cannot reject: this user has no pending verification request."
+    end
+
     resource.update!(
       verification_status: :rejected,
       is_verified: false,

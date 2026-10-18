@@ -30,4 +30,26 @@ class AccountAuthMailer < ApplicationMailer
     @rejection_reason = reason
     mail(to: @user.email, subject: "Your Preview Tax Business Profile Status Update")
   end
+
+  def profile_submitted_email(user, kind = "new")
+    @user = user
+    @kind = kind.to_s
+    @submitted_at = Time.current.strftime("%B %d, %Y at %I:%M %p %Z")
+    subject = @kind == "new" ? "Your Preview Tax expert profile has been submitted for review" : "Your Preview Tax expert profile is back in review"
+    mail(to: @user.email, subject: subject)
+  end
+
+  def verification_submitted_email(user, payment = {})
+    @user = user
+    @payment = (payment || {}).with_indifferent_access
+    @submitted_at = Time.current.strftime("%B %d, %Y at %I:%M %p %Z")
+    mail(to: @user.email, subject: "Verification badge request received - Preview Tax")
+  end
+
+  def verification_approved_email(user, verified_at, expires_at)
+    @user = user
+    @verified_at = verified_at
+    @expires_at = expires_at
+    mail(to: @user.email, subject: "Your Preview Tax verification badge is active")
+  end
 end

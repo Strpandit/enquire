@@ -26,4 +26,52 @@ class AdminNotificationMailer < ApplicationMailer
       subject: "🚨 Policy Alert: Contact details shared in chat by #{sender_name} with #{recipient_name}"
     )
   end
+
+  # Sent to admins when an expert submits (or resubmits) a business profile for review.
+  def business_profile_review_request(business_profile_id:, kind: "new")
+    @business_profile = BusinessProfile.includes(:account, :categories).find_by(id: business_profile_id)
+    return if @business_profile.nil?
+
+    @account = @business_profile.account
+    @kind = kind.to_s # "new" | "resubmitted" | "updated"
+    @submitted_at = Time.current.strftime("%B %d, %Y at %I:%M %p %Z")
+    @review_url = admin_review_url(:admin_business_profile_url, @business_profile)
+
+    recipients = admin_recipients
+    return if recipients.empty?
+
+    label = { "new" => "New expert profile", "resubmitted" => "Expert profile resubmitted", "updated" => "Expert profile changed" }.fetch(@kind, "Expert profile")
+    mail(to: recipients, subject: "[Action needed] #{label} awaiting review - #{@account.full_name}")
+  end
+
+  # Sent to admins when an expert applies for the verification (orange) badge.
+  def verification_review_request(account_id:, payment: {})
+    @account = Account.find_by(id: account_id)
+    return if @account.nil?
+
+    @payment = (payment || {}).with_indifferent_access
+    @submitted_at = Time.current.strftime("%B %d, %Y at %I:%M %p %Z")
+    @business_profile = @account.business_profile
+    @review_url = admin_review_url(:admin_account_url, @account)
+
+    recipients = admin_recipients
+    return if recipients.empty?
+
+    mail(to: recipients, subject: "[Action needed] Verification badge request - #{@account.full_name}")
+  end
+
+  private
+
+  def admin_recipients
+    recipients = AdminUser.pluck(:email).compact.reject(&:blank?)
+    default_admin = ENV.fetch("ADMIN_EMAIL", "previewtaxinc@gmail.com")
+    recipients << default_admin if default_admin.present?
+    recipients.uniq
+  end
+
+  def admin_review_url(helper, record)
+    Rails.application.routes.url_helpers.public_send(helper, record)
+  rescue StandardError
+    nil
+  end
 end

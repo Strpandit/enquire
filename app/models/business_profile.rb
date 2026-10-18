@@ -13,7 +13,9 @@ class BusinessProfile < ApplicationRecord
 
   has_one_attached :gst_certificate
 
-  enum :approval_status, { pending: 0, approved: 1, rejected: 2 }, default: :pending
+  # draft = expert is still filling the onboarding steps; not visible to admin
+  # review until every step is complete and the expert explicitly submits.
+  enum :approval_status, { pending: 0, approved: 1, rejected: 2, draft: 3 }, default: :draft
 
   GST_REGEX = /\A[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]\z/
   PINCODE_REGEX = /\A\d{6}\z/
@@ -71,6 +73,19 @@ class BusinessProfile < ApplicationRecord
 
   def public_visible?
     approved?
+  end
+
+  # Human-readable list of onboarding steps still missing. Empty => ready for review.
+  def missing_onboarding_steps
+    missing = []
+    missing << "business details" if business_name.blank? || business_address.blank?
+    missing << "at least one category" unless business_profile_categories.exists?
+    missing << "consultation fees (set at least one price)" unless [ chat_price, call_price, v_call_price ].any? { |p| p.to_i.positive? }
+    missing
+  end
+
+  def ready_for_review?
+    missing_onboarding_steps.empty?
   end
 
   private

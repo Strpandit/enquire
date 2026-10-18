@@ -1,0 +1,44 @@
+<div style="font-family:'Segoe UI',Tahoma,Arial,sans-serif;max-width:640px;margin:0 auto;color:#222;">
+  <div style="background:#1f2937;color:#fff;padding:20px 24px;border-radius:8px 8px 0 0;">
+    <h2 style="margin:0;font-size:20px;">
+      <%= { "new" => "New expert profile awaiting review", "resubmitted" => "Expert profile resubmitted for review", "updated" => "Expert changed business details - re-approval needed" }.fetch(@kind, "Expert profile awaiting review") %>
+    </h2>
+  </div>
+  <div style="border:1px solid #e5e7eb;border-top:0;padding:24px;border-radius:0 0 8px 8px;">
+    <p>Hello Admin,</p>
+    <p>
+      <strong><%= @account.full_name %></strong> has <%= @kind == "new" ? "applied for an expert profile" : "submitted their expert profile again" %>
+      and it is waiting for your review and approval.
+    </p>
+
+    <table style="width:100%;border-collapse:collapse;font-size:14px;margin:16px 0;">
+      <% rows = [
+        ["Expert name", @account.full_name],
+        ["Email", @account.email],
+        ["Phone", @account.phone],
+        ["Business name", @business_profile.business_name],
+        ["Address", [@business_profile.business_address, @business_profile.city, @business_profile.state, @business_profile.pincode].compact_blank.join(", ")],
+        ["Categories", @business_profile.categories.map(&:name).join(", ").presence || "-"],
+        ["Chat / min", "₹#{@business_profile.chat_price.to_i}"],
+        ["Call / min", "₹#{@business_profile.call_price.to_i}"],
+        ["Video call / min", "₹#{@business_profile.v_call_price.to_i}"],
+        ["GST", @business_profile.gst_enabled? ? (@business_profile.gst_number.presence || "Enabled") : "Not enabled"],
+        ["Submitted at", @submitted_at]
+      ] %>
+      <% rows.each do |label, value| %>
+        <tr>
+          <td style="padding:8px 10px;background:#f9fafb;border:1px solid #e5e7eb;width:35%;"><strong><%= label %></strong></td>
+          <td style="padding:8px 10px;border:1px solid #e5e7eb;"><%= value.presence || "-" %></td>
+        </tr>
+      <% end %>
+    </table>
+
+    <% if @review_url %>
+      <p style="text-align:center;margin:24px 0;">
+        <a href="<%= @review_url %>" style="background:#11998e;color:#fff;text-decoration:none;padding:12px 28px;border-radius:6px;font-weight:bold;">Review in Admin Panel</a>
+      </p>
+    <% end %>
+
+    <p style="font-size:12px;color:#6b7280;">Please review the details and approve or reject the profile from the admin panel. This is an automated message from Preview Tax.</p>
+  </div>
+</div>

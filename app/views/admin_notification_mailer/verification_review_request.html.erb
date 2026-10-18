@@ -1,0 +1,59 @@
+<div style="font-family:'Segoe UI',Tahoma,Arial,sans-serif;max-width:640px;margin:0 auto;color:#222;">
+  <div style="background:#c2410c;color:#fff;padding:20px 24px;border-radius:8px 8px 0 0;">
+    <h2 style="margin:0;font-size:20px;">Verification badge request awaiting review</h2>
+  </div>
+  <div style="border:1px solid #e5e7eb;border-top:0;padding:24px;border-radius:0 0 8px 8px;">
+    <p>Hello Admin,</p>
+    <p>
+      <strong><%= @account.full_name %></strong> has applied for the verification (orange) badge
+      <%= @payment[:amount].to_i.positive? ? "and the payment has been received." : "(no fee - resubmission after rejection)." %>
+      Please review their documents and approve or reject the request.
+    </p>
+
+    <h3 style="margin:20px 0 6px;font-size:15px;">Expert details</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <% [
+        ["Name", @account.full_name],
+        ["Email", @account.email],
+        ["Phone", @account.phone],
+        ["Username", @account.username],
+        ["Business name", @business_profile&.business_name],
+        ["Profile status", @business_profile&.approval_status&.humanize],
+        ["Documents", [("PAN" if @account.pan_card.attached?), ("Aadhaar" if @account.aadhaar_card.attached?), ("GST certificate" if @account.gst_certificate.attached?)].compact.join(", ").presence]
+      ].each do |label, value| %>
+        <tr>
+          <td style="padding:8px 10px;background:#f9fafb;border:1px solid #e5e7eb;width:35%;"><strong><%= label %></strong></td>
+          <td style="padding:8px 10px;border:1px solid #e5e7eb;"><%= value.presence || "-" %></td>
+        </tr>
+      <% end %>
+    </table>
+
+    <h3 style="margin:20px 0 6px;font-size:15px;">Payment details</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <% [
+        ["Amount paid", @payment[:amount].to_i.positive? ? "₹#{@payment[:amount]}" : "No fee"],
+        ["Payment method", @payment[:method].to_s == "cashfree" ? "Online (Cashfree)" : (@payment[:method].to_s == "wallet" ? "Wallet" : "-")],
+        ["Payment / order ID", @payment[:reference]],
+        ["Paid at", @payment[:paid_at].present? ? (Time.zone.parse(@payment[:paid_at].to_s)&.strftime("%B %d, %Y at %I:%M %p %Z") rescue @payment[:paid_at]) : @submitted_at],
+        ["Request submitted", @submitted_at]
+      ].each do |label, value| %>
+        <tr>
+          <td style="padding:8px 10px;background:#f9fafb;border:1px solid #e5e7eb;width:35%;"><strong><%= label %></strong></td>
+          <td style="padding:8px 10px;border:1px solid #e5e7eb;"><%= value.presence || "-" %></td>
+        </tr>
+      <% end %>
+    </table>
+
+    <p style="margin-top:16px;font-size:13px;color:#374151;">
+      Note: the <%= Account::VERIFICATION_CYCLE_DAYS %>-day badge validity starts only when you approve this request.
+    </p>
+
+    <% if @review_url %>
+      <p style="text-align:center;margin:24px 0;">
+        <a href="<%= @review_url %>" style="background:#c2410c;color:#fff;text-decoration:none;padding:12px 28px;border-radius:6px;font-weight:bold;">Review Verification Request</a>
+      </p>
+    <% end %>
+
+    <p style="font-size:12px;color:#6b7280;">This is an automated message from Preview Tax.</p>
+  </div>
+</div>

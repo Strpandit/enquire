@@ -25,6 +25,7 @@ Rails.application.routes.draw do
       resources :categories, only: [ :index, :show ]
       resources :business_profiles, except: [ :new, :edit ] do
         get :qr_code, on: :member
+        post :submit, on: :member
         post :favorite, on: :member
         delete :unfavorite, on: :member
         collection do

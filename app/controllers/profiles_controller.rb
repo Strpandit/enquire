@@ -1,5 +1,6 @@
 class ProfilesController < ActionController::Base
   PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.previewtax".freeze
+  WEBSITE_URL = "https://previewtax.com".freeze
 
   def assetlinks
     default_shas = [
@@ -36,6 +37,9 @@ class ProfilesController < ActionController::Base
     @expert_name = business_profile.account.full_name.presence || business_profile.business_name
     @deep_link_url = "previewtax://expert/#{@expert_uid}"
     @play_store_url = PLAY_STORE_URL
+    @fallback_url = play_store_listed? ? PLAY_STORE_URL : WEBSITE_URL
+    @intent_url = "intent://expert/#{@expert_uid}#Intent;scheme=previewtax;package=com.previewtax;" \
+                  "S.browser_fallback_url=#{ERB::Util.url_encode(@fallback_url)};end"
 
     render inline: <<~HTML
       <!DOCTYPE html>
@@ -85,17 +89,31 @@ class ProfilesController < ActionController::Base
           </style>
           <script>
             window.addEventListener("load", function () {
-              const deepLink = "<%= @deep_link_url %>";
-              const playStoreUrl = "<%= @play_store_url %>";
-              const startedAt = Date.now();
+              const deepLink = <%= raw @deep_link_url.to_json %>;
+              const intentUrl = <%= raw @intent_url.to_json %>;
+              const fallbackUrl = <%= raw @fallback_url.to_json %>;
+              const isAndroid = /android/i.test(navigator.userAgent);
+              let left = false;
 
-              window.location.href = deepLink;
+              document.addEventListener("visibilitychange", function () {
+                if (document.hidden) left = true;
+              });
+              window.addEventListener("pagehide", function () { left = true; });
 
+              if (!isAndroid) {
+                window.location.replace(fallbackUrl);
+                return;
+              }
+
+              window.location.href = intentUrl;
               setTimeout(function () {
-                if (Date.now() - startedAt < 1800) {
-                  window.location.href = playStoreUrl;
+                if (!left && !document.hidden) {
+                  window.location.href = deepLink;
+                  setTimeout(function () {
+                    if (!left && !document.hidden) window.location.replace(fallbackUrl);
+                  }, 1500);
                 }
-              }, 1400);
+              }, 1500);
             });
           </script>
         </head>
@@ -103,10 +121,23 @@ class ProfilesController < ActionController::Base
           <div class="card">
             <h1>Open in PreviewTax</h1>
             <p>Continue to <%= ERB::Util.html_escape(@expert_name) %>'s expert profile in the PreviewTax app.</p>
-            <a class="button" href="<%= @play_store_url %>">Get the app</a>
+            <a class="button" href="<%= @fallback_url %>">Get the app</a>
           </div>
         </body>
       </html>
     HTML
+  end
+
+  private
+
+  def play_store_listed?
+    Rails.cache.fetch("play_store_listed", expires_in: 1.hour) do
+      uri = URI.parse(PLAY_STORE_URL)
+      Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 3, read_timeout: 3) do |http|
+        http.request(Net::HTTP::Get.new(uri.request_uri)).code == "200"
+      end
+    rescue StandardError
+      false
+    end
   end
 end

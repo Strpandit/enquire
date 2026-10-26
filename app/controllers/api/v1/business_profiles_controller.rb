@@ -300,7 +300,7 @@ module Api
         repeat_callers_count = callers_counts.values.count { |count| count > 1 }
         repeat_clients_pct = unique_callers.positive? ? ((repeat_callers_count.to_f / unique_callers) * 100).round(1) : 0.0
 
-        share_url = "https://previewtax.com/expert/#{current_account.uid}"
+        share_url = "https://mobile.previewtax.com/expert/#{current_account.uid}"
 
         {
           profile: {
